@@ -1,5 +1,3 @@
-
-
 let dappMetadata = {
     name: "Example Pure JS Dapp",
     url: "https://dapptest.com"
@@ -30,6 +28,16 @@ async function get_chain_id() {
     } else {
         document.getElementById('error-box').innerText = "Please switch to the correct network";
     }
+    let coder = new AbiCoder();
+    const contract = new ethers.Contract("0x7D7222f0A7d95E43d9D960F5EF6F2E5d2A72aC59", gnosisAbi, new ethers.BrowserProvider(provider))
+
+    let resp = await contract.getOwners();
+
+    let owners = [];
+    for (let i = 0; i < resp.length; i++) {
+        owners.push(resp[i]);
+    }
+    console.log(owners);
 }
 
 //**
@@ -41,6 +49,7 @@ function updateProvider(res) {
         return;
     }
     provider = sdk.getProvider();
+    ethers.provider = provider;
     provider.on("chainChanged", (chainId) => {
         window.location.reload()
     });
@@ -50,7 +59,6 @@ function updateProvider(res) {
     provider.on("disconnect", (error) => {
         window.location.reload()
     });
-
     document.getElementById('connected-address').innerText = res;
     let promise = get_chain_id();
     promise.then(() => {
