@@ -6,6 +6,7 @@ let dappMetadata = {
 const sdk = new MetaMaskSDK.MetaMaskSDK(dappMetadata);
 
 let provider;
+let connected;
 
 function connect() {
     document.getElementById("connect-button").setAttribute("disabled", "true");
@@ -29,14 +30,57 @@ async function get_chain_id() {
         document.getElementById('error-box').innerText = "Please switch to the correct network";
     }
     let coder = new AbiCoder();
-    const contract = new ethers.Contract("0x7D7222f0A7d95E43d9D960F5EF6F2E5d2A72aC59", gnosisAbi, new ethers.BrowserProvider(provider))
+
+    let multisigAddress = "0x7D7222f0A7d95E43d9D960F5EF6F2E5d2A72aC59";
+    document.getElementById("multisig-address").innerText = multisigAddress;
+    document.getElementById("multisig-address").href = "https://holesky.etherscan.io/address/" + multisigAddress;
+    const contract = new ethers.Contract(multisigAddress, gnosisAbi, new ethers.BrowserProvider(provider))
 
     let resp = await contract.getOwners();
 
+    let iface = new Interface(gnosisAbi);
+
+    let calldata = iface.encodeFunctionData("addOwner", ["0xDa6EA3738503C5b73B27cEbD06761183D9A08657"]);
+
+    let call = iface.encodeFunctionData("submitTransaction", [multisigAddress, 0, calldata]);
+
+
+    //send with metamask
+
+    let tx = {
+
+    };
+
+
+    console.log(calldata);
     let owners = [];
     for (let i = 0; i < resp.length; i++) {
         owners.push(resp[i]);
+        document.getElementById('owners').innerHTML += "<li>" + resp[i] + "</li>";
     }
+    console.log(multisigAddress);
+    console.log(call);
+    let params = {
+        to: "0x00fb9cba7a830584976d2add586440fa28208040",
+        data: calldata
+    };
+
+    console.log(params);
+    let gasLimit = 1000000;
+    //gaslimit to hex
+    let gasLimitHex = gasLimit.toString(16);
+    /*await window.ethereum.request({
+        "method": "eth_sendTransaction",
+        "params": [
+            {
+                "to": multisigAddress,
+                "from": connected,
+                "gas": gasLimitHex,
+                "value": "0x0",
+                "data": call,
+            }
+        ]
+    });*/
     console.log(owners);
 }
 
@@ -49,7 +93,7 @@ function updateProvider(res) {
         return;
     }
     provider = sdk.getProvider();
-    ethers.provider = provider;
+    connected = res[0];
     provider.on("chainChanged", (chainId) => {
         window.location.reload()
     });
