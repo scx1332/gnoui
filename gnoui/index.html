@@ -10,26 +10,48 @@
     <title>gnosis-ui</title>
 </head>
 <body>
-<h1>gnoui</h1>
-
 <div id="error-box" style="color: red;"></div>
-<button id="connect-button" onclick="connect()">Connect</button>
 
-<div id="connected-address"></div>
-<div id="connected-network"></div>
+<div style="border: 1px solid blue; padding: 1em;">
+    <h2>Connected address</h2>
+    <button id="connect-button" onclick="connect()">Connect</button>
+    <div id="connected-address"></div>
+    <div id="connected-network"></div>
+</div>
 
 <div id="contract-owners">
-    <h2>MultiSig info</h2>
-    <div>Address: <a id="multisig-address"></a></div>
-    <div>
-        Owners:
-        <ul id="owners"></ul>
-    </div>
-    <button id="add-owner-button" onclick="addOwner()">Add owner</button>
-    <input type="text" id="new-owner-address"/>
+    <div style="border: 1px solid blue; padding: 1em;">
+        <h2>MultiSig info</h2>
+        <div style="border: 1px solid blue; padding: 1em;">
+            <div>Address: <a id="multisig-address"></a></div>
+        </div>
+        <div style="border: 1px solid blue; padding: 1em;">
+            <div>
+                <h3>Transaction list</h3>
+                <div id="executed-transactions"></div>
+                <div id="pending-transactions"></div>
+            </div>
+        </div>
+        <div style="border: 1px solid blue; padding: 1em;">
+            <h2>Ownership management</h2>
+            <div>
+                Owners:
+                <ul id="owners"></ul>
+            </div>
+            <div>
+                <h3>Add owner</h3>
 
-    <button id="set-required-confirmations-button" onclick="setRequiredConfirmations()">Set required confirmations</button>
-    <input type="number" id="required-confirmations"/>
+                <button id="add-owner-button" onclick="addOwner()">Add owner</button>
+                <input type="text" id="new-owner-address"/>
+            </div>
+
+            <div>
+                <h3>Change required transactions</h3>
+                <button id="set-required-confirmations-button" onclick="setRequiredConfirmations()">Set required confirmations</button>
+                <input type="number" id="required-confirmations"/>
+            </div>
+        </div>
+    </div>
 </div>
 </body>
 </html>

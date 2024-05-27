@@ -56,6 +56,35 @@ async function setRequiredConfirmations() {
 
 }
 
+async function getOwners(contract) {
+    let owners = [];
+    let resp = await contract.getOwners();
+    for (let i = 0; i < resp.length; i++) {
+        owners.push(resp[i]);
+        document.getElementById('owners').innerHTML += `<li>${resp[i]} - <button onclick="removeOwner('${resp[i]}')">Remove</button> </li>`;
+    }
+}
+
+async function getTransactionsIds(contract, pending) {
+    let resp;
+
+    if (pending) {
+        let transCount = await contract.getTransactionCount(true, false);
+        resp = await contract.getTransactionIds(0, transCount, true, false);
+        for (let i = 0; i < resp.length; i++) {
+            document.getElementById('pending-transactions').innerHTML += `<li>${resp[i]} - <button>Execute</button> </li>`;
+        }
+    } else {
+        let transCount = await contract.getTransactionCount(false, true);
+        resp = await contract.getTransactionIds(0, transCount, false, true);
+        for (let i = 0; i < resp.length; i++) {
+            document.getElementById('executed-transactions').innerHTML += `<li>Executed: ${resp[i]} </li>`;
+        }
+    }
+    console.log(resp);
+}
+
+
 async function get_chain_id() {
     let chainId = await provider.request({ method: 'eth_chainId' });
     console.log(chainId);
@@ -71,53 +100,11 @@ async function get_chain_id() {
     document.getElementById("multisig-address").href = "https://holesky.etherscan.io/address/" + multisigAddress;
     const contract = new ethers.Contract(multisigAddress, gnosisAbi, new ethers.BrowserProvider(provider))
 
-    let resp = await contract.getOwners();
-
-    let iface = new Interface(gnosisAbi);
-
-    let calldata = iface.encodeFunctionData("addOwner", ["0xDa6EA3738503C5b73B27cEbD06761183D9A08657"]);
-
-    let call = iface.encodeFunctionData("submitTransaction", [multisigAddress, 0, calldata]);
-
-
-    //send with metamask
-
-    let tx = {
-
-    };
-
-
-    console.log(calldata);
-    let owners = [];
-    for (let i = 0; i < resp.length; i++) {
-        owners.push(resp[i]);
-        document.getElementById('owners').innerHTML += `<li>${resp[i]} - <button onclick="removeOwner('${resp[i]}')">Remove</button> </li>`;
-    }
-    console.log(multisigAddress);
-    console.log(call);
-    let params = {
-        to: "0x00fb9cba7a830584976d2add586440fa28208040",
-        data: calldata
-    };
-
-    console.log(params);
-    let gasLimit = 1000000;
-    //gaslimit to hex
-    let gasLimitHex = gasLimit.toString(16);
-    /*await window.ethereum.request({
-        "method": "eth_sendTransaction",
-        "params": [
-            {
-                "to": multisigAddress,
-                "from": connected,
-                "gas": gasLimitHex,
-                "value": "0x0",
-                "data": call,
-            }
-        ]
-    });*/
-    console.log(owners);
+    await getOwners(contract);
+    await getTransactionsIds(contract, true);
+    await getTransactionsIds(contract, false);
 }
+
 function removeOwner(address) {
     let multisigAddress = "0x7D7222f0A7d95E43d9D960F5EF6F2E5d2A72aC59";
     let iface = new Interface(gnosisAbi);
