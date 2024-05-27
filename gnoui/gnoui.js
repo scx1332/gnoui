@@ -8,6 +8,14 @@ const sdk = new MetaMaskSDK.MetaMaskSDK(dappMetadata);
 let provider;
 let connected;
 
+
+// on load
+window.addEventListener('load', async () => {
+    let res = await sdk.connect();
+    updateProvider(res);
+    document.getElementById("connect-button").setAttribute("disabled", "true");
+});
+
 function connect() {
     document.getElementById("connect-button").setAttribute("disabled", "true");
     sdk.connect()
@@ -19,6 +27,33 @@ function connect() {
             document.getElementById('error-box').innerText = "Error connecting to MetaMask";
             document.getElementById("connect-button").removeAttribute("disabled");
         });
+}
+
+async function setRequiredConfirmations() {
+    let confirmations = parseInt(document.getElementById("required-confirmations").value);
+    let multisigAddress = "0x7D7222f0A7d95E43d9D960F5EF6F2E5d2A72aC59";
+    let iface = new Interface(gnosisAbi);
+    let calldata = iface.encodeFunctionData("changeRequirement", [confirmations]);
+    let call = iface.encodeFunctionData("submitTransaction", [multisigAddress, 0, calldata]);
+    let params = {
+        to: multisigAddress,
+        data: calldata
+    };
+    let gasLimit = 1000000;
+    let gasLimitHex = gasLimit.toString(16);
+    window.ethereum.request({
+        "method": "eth_sendTransaction",
+        "params": [
+            {
+                "to": multisigAddress,
+                "from": connected,
+                "gas": gasLimitHex,
+                "value": "0x0",
+                "data": call,
+            }
+        ]
+    });
+
 }
 
 async function get_chain_id() {
@@ -56,7 +91,7 @@ async function get_chain_id() {
     let owners = [];
     for (let i = 0; i < resp.length; i++) {
         owners.push(resp[i]);
-        document.getElementById('owners').innerHTML += "<li>" + resp[i] + "</li>";
+        document.getElementById('owners').innerHTML += `<li>${resp[i]} - <button onclick="removeOwner('${resp[i]}')">Remove</button> </li>`;
     }
     console.log(multisigAddress);
     console.log(call);
@@ -82,6 +117,55 @@ async function get_chain_id() {
         ]
     });*/
     console.log(owners);
+}
+function removeOwner(address) {
+    let multisigAddress = "0x7D7222f0A7d95E43d9D960F5EF6F2E5d2A72aC59";
+    let iface = new Interface(gnosisAbi);
+    let calldata = iface.encodeFunctionData("removeOwner", [address]);
+    let call = iface.encodeFunctionData("submitTransaction", [multisigAddress, 0, calldata]);
+    let params = {
+        to: multisigAddress,
+        data: calldata
+    };
+    let gasLimit = 1000000;
+    let gasLimitHex = gasLimit.toString(16);
+    window.ethereum.request({
+        "method": "eth_sendTransaction",
+        "params": [
+            {
+                "to": multisigAddress,
+                "from": connected,
+                "gas": gasLimitHex,
+                "value": "0x0",
+                "data": call,
+            }
+        ]
+    });
+}
+function addOwner() {
+    let address = document.getElementById('new-owner-address').value;
+    let multisigAddress = "0x7D7222f0A7d95E43d9D960F5EF6F2E5d2A72aC59";
+    let iface = new Interface(gnosisAbi);
+    let calldata = iface.encodeFunctionData("addOwner", [address]);
+    let call = iface.encodeFunctionData("submitTransaction", [multisigAddress, 0, calldata]);
+    let params = {
+        to: multisigAddress,
+        data: calldata
+    };
+    let gasLimit = 1000000;
+    let gasLimitHex = gasLimit.toString(16);
+    window.ethereum.request({
+        "method": "eth_sendTransaction",
+        "params": [
+            {
+                "to": multisigAddress,
+                "from": connected,
+                "gas": gasLimitHex,
+                "value": "0x0",
+                "data": call,
+            }
+        ]
+    });
 }
 
 //**
