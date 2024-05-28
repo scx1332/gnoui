@@ -49,6 +49,13 @@ function connect() {
         });
 }
 
+
+function getUriParameters() {
+    let url = new URL(window.location.href);
+    let params = new URLSearchParams(url.search);
+    return params;
+}
+
 async function setRequiredConfirmations() {
     let confirmations = parseInt(document.getElementById("required-confirmations").value);
     let iface = new Interface(gnosisAbi);
@@ -253,6 +260,11 @@ async function get_chain_id() {
         document.getElementById("connected-network").innerText = "Connected to Ethereum Mainnet:";
     } else {
         document.getElementById('error-box').innerText = "Please switch to the correct network";
+    }
+
+    let uriParams = getUriParameters();
+    if (uriParams.has('multisig') && uriParams.get('multisig').length === 42) {
+        localStorage.setItem(`multisig_${network}`, uriParams.get('multisig'));
     }
 
     multisigAddress = getMultiSigAddress(network);
