@@ -8,6 +8,8 @@ const sdk = new MetaMaskSDK.MetaMaskSDK(dappMetadata);
 let provider;
 let connected;
 
+let multisigAddress = "0x7D7222f0A7d95E43d9D960F5EF6F2E5d2A72aC59";
+
 
 // on load
 window.addEventListener('load', async () => {
@@ -31,7 +33,6 @@ function connect() {
 
 async function setRequiredConfirmations() {
     let confirmations = parseInt(document.getElementById("required-confirmations").value);
-    let multisigAddress = "0x7D7222f0A7d95E43d9D960F5EF6F2E5d2A72aC59";
     let iface = new Interface(gnosisAbi);
     let calldata = iface.encodeFunctionData("changeRequirement", [confirmations]);
     let call = iface.encodeFunctionData("submitTransaction", [multisigAddress, 0, calldata]);
@@ -222,7 +223,6 @@ async function get_chain_id() {
     }
     let coder = new AbiCoder();
 
-    let multisigAddress = "0x7D7222f0A7d95E43d9D960F5EF6F2E5d2A72aC59";
     document.getElementById("multisig-address").innerText = multisigAddress;
     document.getElementById("multisig-address").href = "https://holesky.etherscan.io/address/" + multisigAddress;
     const contract = new ethers.Contract(multisigAddress, gnosisAbi, new ethers.BrowserProvider(provider))
@@ -233,7 +233,6 @@ async function get_chain_id() {
 }
 
 function removeOwner(address) {
-    let multisigAddress = "0x7D7222f0A7d95E43d9D960F5EF6F2E5d2A72aC59";
     let iface = new Interface(gnosisAbi);
     let calldata = iface.encodeFunctionData("removeOwner", [address]);
     let call = iface.encodeFunctionData("submitTransaction", [multisigAddress, 0, calldata]);
@@ -258,7 +257,6 @@ function removeOwner(address) {
 }
 function addOwner() {
     let address = document.getElementById('new-owner-address').value;
-    let multisigAddress = "0x7D7222f0A7d95E43d9D960F5EF6F2E5d2A72aC59";
     let iface = new Interface(gnosisAbi);
     let calldata = iface.encodeFunctionData("addOwner", [address]);
     let call = iface.encodeFunctionData("submitTransaction", [multisigAddress, 0, calldata]);
@@ -306,7 +304,6 @@ async function sendErc20Token() {
 
 
     if (confirm(confirmStr)) {
-        let multisigAddress = "0x7D7222f0A7d95E43d9D960F5EF6F2E5d2A72aC59";
         let iface = new Interface(gnosisAbi);
         let erc20iface = new Interface(erc20abi);
 
@@ -343,7 +340,6 @@ function sendGasTransfer() {
     confirmStr += `${formatEther(bigAmount)} ETH (dec: ${bigAmount.toString()} wei, hex: ${bigAmountHex}) \n`;
     confirmStr += `to ${address}`;
     if (confirm(confirmStr)) {
-        let multisigAddress = "0x7D7222f0A7d95E43d9D960F5EF6F2E5d2A72aC59";
         let iface = new Interface(gnosisAbi);
         let gasLimit = 1000000;
         let gasLimitHex = gasLimit.toString(16);
