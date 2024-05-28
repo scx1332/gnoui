@@ -155,6 +155,38 @@ function addOwner() {
     });
 }
 
+function sendGasTransfer() {
+    let address = document.getElementById('gas-destination-address').value;
+    let amount = document.getElementById('gas-transfer-value').value;
+    let bigAmount = parseEther(amount);
+    let bigAmountHex = '0x' + bigAmount.toString(16);
+    // be extra careful with this
+    bigAmount = BigInt(bigAmountHex);
+
+    let confirmStr = "Are you sure you want to send \n";
+    confirmStr += `${formatEther(bigAmount)} ETH (${bigAmount.toString()} wei, encoded ${bigAmountHex}) \n`;
+    confirmStr += `to ${address}`;
+    if (confirm(confirmStr)) {
+        let multisigAddress = "0x7D7222f0A7d95E43d9D960F5EF6F2E5d2A72aC59";
+        let iface = new Interface(gnosisAbi);
+        let gasLimit = 1000000;
+        let gasLimitHex = gasLimit.toString(16);
+        let call = iface.encodeFunctionData("submitTransaction", [address, bigAmount, "0x"]);
+        window.ethereum.request({
+            "method": "eth_sendTransaction",
+            "params": [
+                {
+                    "to": multisigAddress,
+                    "from": connected,
+                    "gas": gasLimitHex,
+                    "value": "0x0",
+                    "data": call,
+                }
+            ]
+        });
+    }
+}
+
 //**
 // * @param {Array.} res
 function updateProvider(res) {

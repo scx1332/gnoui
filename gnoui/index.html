@@ -34,22 +34,76 @@
         </div>
         <div style="border: 1px solid blue; padding: 1em;">
             <h2>Ownership management</h2>
-            <div>
-                Owners:
-                <ul id="owners"></ul>
+            <div style="display: flex; flex-direction: column">
+                <div>
+                    Owners:
+                    <ul id="owners"></ul>
+                </div>
             </div>
-            <div>
+            <div style="display: flex; flex-direction: column">
                 <h3>Add owner</h3>
-
-                <button id="add-owner-button" onclick="addOwner()">Add owner</button>
-                <input type="text" id="new-owner-address"/>
+                <div>
+                    <button id="add-owner-button" onclick="addOwner()">Add owner</button>
+                </div>
+                <div>
+                    <input type="text" id="new-owner-address"/>
+                </div>
             </div>
-
-            <div>
+            <div style="display: flex; flex-direction: column">
                 <h3>Change required transactions</h3>
-                <button id="set-required-confirmations-button" onclick="setRequiredConfirmations()">Set required confirmations</button>
-                <input type="number" id="required-confirmations"/>
+                <div>
+                    <button id="set-required-confirmations-button" onclick="setRequiredConfirmations()">Set required confirmations</button>
+                </div>
+                <div>
+                    <input type="number" id="required-confirmations"/>
+                </div>
             </div>
+        </div>
+        <div style="border: 1px solid blue; padding: 1em; display: flex; flex-direction: column;">
+            <h2>Operations</h2>
+            <div>
+                <h3>Send ETH (pure gas token) transfer</h3>
+                <div style="margin: 0.2em;">
+                    Receiver (destination) address: <input type="text" id="gas-destination-address" value="0xd8da6bf26964af9d7eed9e03e53415d37aa96045"/>
+                </div>
+                <div style="margin: 0.2em;">
+                    Value: <input type="text" id="gas-transfer-value" value="0.000000000001"/>
+                </div>
+                <div style="margin: 0.2em;">
+                    <button id="send-gas-button" onclick="sendGasTransfer()">Send transaction</button>
+                </div>
+            </div>
+            <div style="display: flex; flex-direction: column;">
+                <h3>Send ERC20 token transfer</h3>
+                <div style="margin: 0.2em;">
+                    Token address: <input type="text" id="token-address"/>
+                </div>
+                <div style="margin: 0.2em;">
+                    Receiver (destination) address: <input type="text" id="token-dest-address"/>
+                </div>
+                <div style="margin: 0.2em;">
+                    Token amount: <input type="text" id="token-value"/>
+                </div>
+                <div style="margin: 0.2em;">
+                    <button id="send-token-button" onclick="sendTransaction()">Check values</button>
+                </div>
+            </div>
+            <div style="display: flex; flex-direction: column;">
+                <h3>Send any transaction</h3>
+                <div style="margin: 0.2em;">
+                    Contract address: <input type="text" id="contract-address"/>
+                </div>
+                <div style="margin: 0.2em;">
+                    Encoded data: <input type="text" id="any-data"/>
+                </div>
+                <div style="margin: 0.2em;">
+                    Eth value: <input type="text" id="any-gas-value"/>
+                </div>
+                <div style="margin: 0.2em;">
+                    <button id="send-any-button" onclick="sendTransaction()">Check values</button>
+                </div>
+            </div>
+
         </div>
     </div>
 </div>
