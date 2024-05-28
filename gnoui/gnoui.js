@@ -1,14 +1,15 @@
 let dappMetadata = {
-    name: "Example Pure JS Dapp",
-    url: "https://dapptest.com"
+    name: "Gnosis simple UI",
+    url: "https://gnosis.dev.golem.network"
 };
 
 const sdk = new MetaMaskSDK.MetaMaskSDK(dappMetadata);
 
 let provider;
 let connected;
+let network = "unknown";
 
-let multisigAddress = "0x7D7222f0A7d95E43d9D960F5EF6F2E5d2A72aC59";
+let multisigAddress = getMultiSigAddress("holesky");
 
 
 // on load
@@ -88,6 +89,17 @@ async function getTransactionsIds(contract, pending) {
         }
     }
     console.log(resp);
+}
+
+function getMultiSigAddress(network) {
+    let localStorageKey = `multisig_${network}`;
+    let localStorageItem = localStorage.getItem(localStorageKey);
+    if (localStorageItem) {
+        return localStorageItem;
+    } else if (network === "holesky") {
+        //return "0x7D7222f0A7d95E43d9D960F5EF6F2E5d2A72aC59";
+        return "0x2E9cE37b4d0Ef9385AAf3f32DFE727c41fdcc8DD";
+    }
 }
 
 async function downloadAbi(network, contractAddress) {
@@ -217,14 +229,22 @@ async function get_chain_id() {
     let chainId = await provider.request({ method: 'eth_chainId' });
     console.log(chainId);
     if (parseInt(chainId) === 17000) {
-        document.getElementById("connected-network").innerText = "Connected to Holesky network";
+        network = "holesky";
+        document.getElementById("connected-network").innerText = "Connected to Holesky testnet:";
+    } else if (parseInt(chainId) === 1) {
+        network = "mainnet";
+        document.getElementById("connected-network").innerText = "Connected to Ethereum Mainnet:";
     } else {
         document.getElementById('error-box').innerText = "Please switch to the correct network";
     }
-    let coder = new AbiCoder();
+
+    multisigAddress = getMultiSigAddress(network);
+
+    document.getElementById("page-content").setAttribute("style", "display: block;")
 
     document.getElementById("multisig-address").innerText = multisigAddress;
     document.getElementById("multisig-address").href = "https://holesky.etherscan.io/address/" + multisigAddress;
+
     const contract = new ethers.Contract(multisigAddress, gnosisAbi, new ethers.BrowserProvider(provider))
 
     await getOwners(contract);
@@ -369,6 +389,7 @@ function updateProvider(res) {
     }
     provider = sdk.getProvider();
     connected = res[0];
+
     provider.on("chainChanged", (chainId) => {
         window.location.reload()
     });
@@ -378,7 +399,10 @@ function updateProvider(res) {
     provider.on("disconnect", (error) => {
         window.location.reload()
     });
-    document.getElementById('connected-address').innerText = res;
+
+    console.log('Connected to: ', connected);
+    document.getElementById('connected-address').innerHTML =
+        `<a href="https://holesky.etherscan.io/address/${connected}" target="_blank">${connected}</a>`;
     let promise = get_chain_id();
     promise.then(() => {
         // do nothing
