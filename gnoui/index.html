@@ -5,8 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="metamask-sdk.js"></script>
     <script src="gnosis-abi.js"></script>
+    <script src="erc20-abi.js"></script>
     <script src="gnoui.js"></script>
     <script src="ethers.js"></script>
+    <link rel="stylesheet" href="gnoui.css">
     <title>gnosis-ui</title>
 </head>
 <body>
@@ -30,6 +32,7 @@
                 <h3>Transaction list</h3>
                 <div id="executed-transactions"></div>
                 <div id="pending-transactions"></div>
+                <div id="transaction-details"></div>
             </div>
         </div>
         <div style="border: 1px solid blue; padding: 1em;">
@@ -76,16 +79,16 @@
             <div style="display: flex; flex-direction: column;">
                 <h3>Send ERC20 token transfer</h3>
                 <div style="margin: 0.2em;">
-                    Token address: <input type="text" id="token-address"/>
+                    Token address: <input type="text" id="token-address" value="0x8888888815bf4DB87e57B609A50f938311EEd068"/>
                 </div>
                 <div style="margin: 0.2em;">
-                    Receiver (destination) address: <input type="text" id="token-dest-address"/>
+                    Receiver (destination) address: <input type="text" id="token-dest-address" value="0x23D57ac10a98e14f30068d06403e8f9D97657428"/>
                 </div>
                 <div style="margin: 0.2em;">
-                    Token amount: <input type="text" id="token-value"/>
+                    Token amount: <input type="text" id="token-transfer-value" value="0.00001"/>
                 </div>
                 <div style="margin: 0.2em;">
-                    <button id="send-token-button" onclick="sendTransaction()">Check values</button>
+                    <button id="send-token-button" onclick="sendErc20Token()">Send token</button>
                 </div>
             </div>
             <div style="display: flex; flex-direction: column;">

@@ -1,0 +1,15 @@
+.transaction-details {
+    border: 1px solid #ccc;
+    padding: 0.5em;
+}
+
+.transaction-details div {
+    padding: 0.2em;
+}
+.function-signature {
+    font-family: monospace;
+
+}
+.decoded-param {
+    font-family: monospace;
+}
