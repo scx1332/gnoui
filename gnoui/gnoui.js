@@ -16,11 +16,28 @@ let multisigAddress = getMultiSigAddress("holesky");
 window.addEventListener('load', async () => {
     let res = await sdk.connect();
     updateProvider(res);
-    document.getElementById("connect-button").setAttribute("disabled", "true");
+    //document.getElementById("connect-button").setAttribute("disabled", "true");
 });
-
+function showNewContractOptions() {
+    document.getElementById("new-contract-address-box").setAttribute("style", "display: block;");
+    document.getElementById("new-contract-address-box").setAttribute("style", "display: block;");
+    document.getElementById("switch-new-contract-address").setAttribute("disabled", "true");
+}
+function switchMutlisigCancel() {
+    document.getElementById("new-contract-address-box").setAttribute("style", "display: none;");
+    document.getElementById("switch-new-contract-address").removeAttribute("disabled");
+}
+function switchMultiSig() {
+    let newAddress = document.getElementById("new-contract-address").value;
+    if (newAddress.length !== 42) {
+        document.getElementById('error-box').innerText = "Invalid address";
+        return;
+    }
+    localStorage.setItem(`multisig_${network}`, newAddress);
+    window.location.reload();
+}
 function connect() {
-    document.getElementById("connect-button").setAttribute("disabled", "true");
+    //document.getElementById("connect-button").setAttribute("disabled", "true");
     sdk.connect()
         .then((res) => {
              updateProvider(res);
@@ -28,7 +45,7 @@ function connect() {
         .catch((e) => {
             console.log('request accounts ERR', e);
             document.getElementById('error-box').innerText = "Error connecting to MetaMask";
-            document.getElementById("connect-button").removeAttribute("disabled");
+            //document.getElementById("connect-button").removeAttribute("disabled");
         });
 }
 

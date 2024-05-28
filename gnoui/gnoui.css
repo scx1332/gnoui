@@ -1,3 +1,53 @@
+button,
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+    background-color: #e0f7ff; /* Light tinted blue */
+    color: #005f8a; /* Darker blue for text */
+    border: 2px solid #b3e5fc; /* Slightly darker border */
+    border-radius: 0.3em; /* Rounded corners */
+    padding: 0.5em 0.6em; /* Padding for a comfortable click area */
+    font-size: 1.0em; /* Reasonable font size */
+    font-family: 'Arial', sans-serif; /* Clean, sans-serif font */
+    cursor: pointer; /* Pointer cursor on hover */
+    transition: background-color 0.3s, border-color 0.3s; /* Smooth transitions */
+}
+
+button:hover,
+input[type="button"]:hover,
+input[type="submit"]:hover,
+input[type="reset"]:hover {
+    background-color: #b3e5fc; /* Darker blue tint on hover */
+    border-color: #81d4fa; /* Darker border on hover */
+}
+
+button:active,
+input[type="button"]:active,
+input[type="submit"]:active,
+input[type="reset"]:active {
+    background-color: #81d4fa; /* Even darker blue when active */
+    border-color: #4fc3f7; /* Darker border when active */
+}
+
+button:focus,
+input[type="button"]:focus,
+input[type="submit"]:focus,
+input[type="reset"]:focus  {
+    outline: none; /* Remove default focus outline */
+    box-shadow: 0 0 5px 2px rgba(0, 95, 138, 0.5); /* Custom focus shadow */
+}
+
+button:disabled,
+input[type="button"]:disabled,
+input[type="submit"]:disabled,
+input[type="reset"]:disabled {
+    background-color: #f0f0f0; /* Light grey for disabled */
+    border-color: #cccccc; /* Grey border for disabled */
+    color: #aaaaaa; /* Grey text for disabled */
+    cursor: not-allowed; /* Not-allowed cursor for disabled */
+    opacity: 0.6; /* Slight transparency for disabled */
+}
+
 .metamask-connection-box {
     border: 1px solid #ccc;
     padding: 0.5em;
