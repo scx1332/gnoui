@@ -23,7 +23,7 @@
     <div id="contract-owners">
         <div style="border: 1px solid blue; padding: 1em;">
             <div style="border: 1px solid blue; padding: 1em;">
-                Gnosis multisig address: <div class="address-box"><a id="multisig-address" target="_blank"></a> <button id="switch-new-contract-address" onclick="showNewContractOptions()">Change</button> </div>
+                Gnosis multisig address: <div class="address-box address-box-multi-sig"><a id="multisig-address" target="_blank"></a> <button id="switch-new-contract-address" onclick="showNewContractOptions()">Change</button> </div>
                 <div id="new-contract-address-box">
                     Select your gnosis safe contract: <input type="text" id="new-contract-address"/>
                     <button id="switch-contract-button-ok" onclick="switchMultiSig()">Set contract</button>
@@ -31,16 +31,7 @@
                 </div>
             </div>
             <div style="border: 1px solid blue; padding: 1em;">
-                <div>
-                    <h3>Transaction list</h3>
-                    <div id="executed-transactions"></div>
-                    <div id="pending-transactions"></div>
-                    <div>
-                        <h3>Transaction no</h3>
-                        <div id="transaction-details">
-                        </div>
-                    </div>
-
+                <div id="div-transaction-list">
                 </div>
             </div>
             <div style="border: 1px solid blue; padding: 1em;">

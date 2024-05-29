@@ -10,7 +10,7 @@ let connected;
 
 let globals = {
     network: "unknown",
-    multiSigAddress: getMultiSigAddress("holesky"),
+    multiSigAddress: null,
     owners: []
 }
 
@@ -92,24 +92,17 @@ async function getOwners(contract) {
 async function getTransactionsIds(contract, pending) {
     let resp;
 
+    let lastTransactionCount = 10;
     if (pending) {
-        let transCount = await contract.getTransactionCount(true, false);
-        resp = await contract.getTransactionIds(0, transCount, true, false);
-        for (let i = 0; i < resp.length; i++) {
-            document.getElementById('pending-transactions').innerHTML += `<li>${resp[i]} - <button>Execute</button> </li>`;
+        let transCount = await contract.transactionCount();
+        transCount = parseInt(transCount.toString());
+        let firstIdx = Math.max(transCount - lastTransactionCount, 0);
+        resp = await contract.getTransactionIds(firstIdx, transCount, true, true);
+        let reversed = resp.toArray().reverse();
+        for (let el of reversed) {
+            console.log("Pending transaction: " + el);
             try {
-                await getTransactionDetails(contract, resp[i]);
-            } catch (e) {
-                console.error(e);
-            }
-        }
-    } else {
-        let transCount = await contract.getTransactionCount(false, true);
-        resp = await contract.getTransactionIds(0, transCount, false, true);
-        for (let i = 0; i < resp.length; i++) {
-            document.getElementById('executed-transactions').innerHTML += `<li>Executed: ${resp[i]} </li>`;
-            try {
-                await getTransactionDetails(contract, resp[i]);
+                await getTransactionDetails(contract, el);
             } catch (e) {
                 console.error(e);
             }
@@ -122,7 +115,7 @@ function getMultiSigAddress(network) {
     let localStorageKey = `multisig_${network}`;
     let localStorageItem = localStorage.getItem(localStorageKey);
     if (localStorageItem) {
-        return localStorageItem;
+        return getAddress(localStorageItem.toLowerCase());
     } else if (network === "holesky") {
         //return "0x7D7222f0A7d95E43d9D960F5EF6F2E5d2A72aC59";
         return "0x2E9cE37b4d0Ef9385AAf3f32DFE727c41fdcc8DD";
@@ -165,6 +158,7 @@ async function downloadAbi(network, contractAddress) {
 }
 
 
+
 function createDivWithClassAndContent(className, content, isHTML = false) {
     let div = document.createElement('div');
     div.className = className;
@@ -174,6 +168,29 @@ function createDivWithClassAndContent(className, content, isHTML = false) {
         div.innerText = content;
     }
     return div;
+}
+
+function createDivWithAddress(address) {
+    let className = "address-box";
+    let extra = "(Ext)";
+    if (globals.owners.includes(address)) {
+        className += " address-box-owner";
+        extra = "(Own)";
+    }
+    if (address == globals.multiSigAddress) {
+        className += " address-box-multi-sig";
+        extra = "(Mul)";
+    }
+    if (address == connected) {
+        className += " address-box-connected";
+        extra = "(Con)";
+    }
+    let createdDiv = createDivWithClassAndContent(
+        className,
+        `<a href="https://holesky.etherscan.io/address/${address}">${extra}-${address}</a>`,
+        true
+    );
+    return createdDiv;
 }
 
 
@@ -239,13 +256,7 @@ async function getTransactionDetails(contract, transactionId) {
 
         let children = [];
         for (let i = 0; i < ownersAlreadyConfirmed.length; i++) {
-            let owner = ownersAlreadyConfirmed[i];
-            let createdDiv = createDivWithClassAndContent(
-                "address-box",
-                `<a href="https://holesky.etherscan.io/address/${owner}">${owner}</a>`,
-                true
-            );
-            children.push(createdDiv);
+            children.push(createDivWithAddress(ownersAlreadyConfirmed[i]));
         }
         let childrenhtml = children.map((x) => x.outerHTML).join("");
         parentDiv.appendChild(createDivWithClassAndContent(
@@ -265,13 +276,7 @@ async function getTransactionDetails(contract, transactionId) {
 
         let children = [];
         for (let i = 0; i < ownersNotConfirmed.length; i++) {
-            let owner = ownersNotConfirmed[i];
-            let createdDiv = createDivWithClassAndContent(
-                "address-box",
-                `<a href="https://holesky.etherscan.io/address/${owner}">${owner}</a>`,
-                true
-            );
-            children.push(createdDiv);
+            children.push(createDivWithAddress(ownersNotConfirmed[i]));
         }
         let childrenhtml = children.map((x) => x.outerHTML).join("");
         parentDiv.appendChild(createDivWithClassAndContent(
@@ -325,11 +330,8 @@ async function getTransactionDetails(contract, transactionId) {
         parentDiv.appendChild(createDivWithClassAndContent(
             "details-label address-box-label",
             "Contract called: "));
-        parentDiv.appendChild(createDivWithClassAndContent(
-            "details-value address-box",
-            `<a href="https://holesky.etherscan.io/address/${targetAddr}">${targetAddr}</a>`,
-            true
-        ));
+        parentDiv.appendChild(createDivWithAddress(targetAddr));
+
         newDiv.appendChild(parentDiv);
     }
     {
@@ -401,14 +403,41 @@ async function getTransactionDetails(contract, transactionId) {
         newDiv.appendChild(parentDiv);
     }
 
-    document.getElementById('transaction-details').appendChild(newDiv);
+    if (!executed && globals.owners.includes(connected) && ownersNotConfirmed.includes(connected)) {
+        let parentDiv = document.createElement('div');
+        parentDiv.className = "address-box-entry";
+
+        parentDiv.appendChild(createDivWithClassAndContent(
+            "details-label address-box-label",
+            `<button id="confirm-transaction-no-${transactionId}" onclick="confirmTransaction(${transactionId})">Confirm transaction ${transactionId}</button>`, true));
+        newDiv.appendChild(parentDiv);
+    }
+
+    document.getElementById('div-transaction-list').appendChild(newDiv);
 
 
 
 
 }
 
-
+async function confirmTransaction(transactionId) {
+    let iface = new Interface(gnosisAbi);
+    let call = iface.encodeFunctionData("confirmTransaction", [transactionId]);
+    let gasLimit = 1000000;
+    let gasLimitHex = gasLimit.toString(16);
+    window.ethereum.request({
+        "method": "eth_sendTransaction",
+        "params": [
+            {
+                "to": globals.multiSigAddress,
+                "from": connected,
+                "gas": gasLimitHex,
+                "value": "0x0",
+                "data": call,
+            }
+        ]
+    });
+}
 
 
 async function get_chain_id() {
@@ -439,6 +468,8 @@ async function get_chain_id() {
     const contract = new ethers.Contract(globals.multiSigAddress, gnosisAbi, new ethers.BrowserProvider(provider))
 
     globals.owners = await getOwners(contract);
+    updateConnected();
+
     await getTransactionsIds(contract, true);
     await getTransactionsIds(contract, false);
 }
@@ -570,6 +601,12 @@ function sendGasTransfer() {
     }
 }
 
+function updateConnected() {
+    let newDiv = createDivWithAddress(connected);
+    document.getElementById('connected-address').replaceWith(newDiv);
+    newDiv.id = "connected-address";
+}
+
 //**
 // * @param {Array.} res
 function updateProvider(res) {
@@ -579,7 +616,9 @@ function updateProvider(res) {
         return;
     }
     provider = sdk.getProvider();
-    connected = res[0];
+
+    // normalize address
+    connected = getAddress(res[0]);
 
     provider.on("chainChanged", (chainId) => {
         window.location.reload()
@@ -592,8 +631,7 @@ function updateProvider(res) {
     });
 
     console.log('Connected to: ', connected);
-    document.getElementById('connected-address').innerHTML =
-        `<a href="https://holesky.etherscan.io/address/${connected}" target="_blank">${connected}</a>`;
+
     let promise = get_chain_id();
     promise.then(() => {
         // do nothing
