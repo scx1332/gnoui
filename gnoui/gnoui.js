@@ -7,10 +7,12 @@ const sdk = new MetaMaskSDK.MetaMaskSDK(dappMetadata);
 
 let provider;
 let connected;
-let network = "unknown";
 
-let multisigAddress = getMultiSigAddress("holesky");
-
+let globals = {
+    network: "unknown",
+    multiSigAddress: getMultiSigAddress("holesky"),
+    owners: []
+}
 
 // on load
 window.addEventListener('load', async () => {
@@ -23,7 +25,7 @@ function showNewContractOptions() {
     document.getElementById("new-contract-address-box").setAttribute("style", "display: block;");
     document.getElementById("switch-new-contract-address").setAttribute("disabled", "true");
 }
-function switchMutlisigCancel() {
+function switchMutliSigCancel() {
     document.getElementById("new-contract-address-box").setAttribute("style", "display: none;");
     document.getElementById("switch-new-contract-address").removeAttribute("disabled");
 }
@@ -52,26 +54,21 @@ function connect() {
 
 function getUriParameters() {
     let url = new URL(window.location.href);
-    let params = new URLSearchParams(url.search);
-    return params;
+    return new URLSearchParams(url.search);
 }
 
 async function setRequiredConfirmations() {
     let confirmations = parseInt(document.getElementById("required-confirmations").value);
     let iface = new Interface(gnosisAbi);
     let calldata = iface.encodeFunctionData("changeRequirement", [confirmations]);
-    let call = iface.encodeFunctionData("submitTransaction", [multisigAddress, 0, calldata]);
-    let params = {
-        to: multisigAddress,
-        data: calldata
-    };
+    let call = iface.encodeFunctionData("submitTransaction", [globals.multiSigAddress, 0, calldata]);
     let gasLimit = 1000000;
     let gasLimitHex = gasLimit.toString(16);
     window.ethereum.request({
         "method": "eth_sendTransaction",
         "params": [
             {
-                "to": multisigAddress,
+                "to": globals.multiSigAddress,
                 "from": connected,
                 "gas": gasLimitHex,
                 "value": "0x0",
@@ -89,6 +86,7 @@ async function getOwners(contract) {
         owners.push(resp[i]);
         document.getElementById('owners').innerHTML += `<li>${resp[i]} - <button onclick="removeOwner('${resp[i]}')">Remove</button> </li>`;
     }
+    return owners;
 }
 
 async function getTransactionsIds(contract, pending) {
@@ -99,6 +97,11 @@ async function getTransactionsIds(contract, pending) {
         resp = await contract.getTransactionIds(0, transCount, true, false);
         for (let i = 0; i < resp.length; i++) {
             document.getElementById('pending-transactions').innerHTML += `<li>${resp[i]} - <button>Execute</button> </li>`;
+            try {
+                await getTransactionDetails(contract, resp[i]);
+            } catch (e) {
+                console.error(e);
+            }
         }
     } else {
         let transCount = await contract.getTransactionCount(false, true);
@@ -161,6 +164,19 @@ async function downloadAbi(network, contractAddress) {
     }
 }
 
+
+function createDivWithClassAndContent(className, content, isHTML = false) {
+    let div = document.createElement('div');
+    div.className = className;
+    if (isHTML) {
+        div.innerHTML = content;
+    } else {
+        div.innerText = content;
+    }
+    return div;
+}
+
+
 async function getTransactionDetails(contract, transactionId) {
     let resp = await contract.transactions(transactionId);
 
@@ -182,65 +198,211 @@ async function getTransactionDetails(contract, transactionId) {
     }
     let newDiv = document.createElement('div');
     newDiv.className = "transaction-details";
-    if (bytes.length > 0) {
-        let abi = await downloadAbi("holesky", targetAddr);
-        let iface = new Interface(abi);
-        let func = iface.getFunction(hexlify(bytes.subarray(0, 4)));
-        console.log("Called: " + func);
-        let decoded = iface.decodeFunctionData(func, hexlify(bytes));
-        {
-            let div = document.createElement('div');
-            div.innerHTML = `Target address: <a href="https://holesky.etherscan.io/address/${targetAddr}">${targetAddr}</a>`;
-            newDiv.appendChild(div);
+
+    {
+        let parentDiv = document.createElement('div');
+        parentDiv.className = "address-box-entry";
+
+        parentDiv.appendChild(createDivWithClassAndContent(
+            "details-label transaction-details-header-label",
+            "Transaction ID:"));
+        parentDiv.appendChild(createDivWithClassAndContent(
+            "details-value transaction-details-value",
+            `${transactionId}`,
+            true
+        ));
+        newDiv.appendChild(parentDiv);
+    }
+    let transactionStatus = executed ? "Executed" : "Pending";
+
+
+    let ownersAlreadyConfirmed = [];
+    let ownersNotConfirmed = [];
+
+    let confirmedOwners = await contract.getConfirmations(transactionId);
+    for (let i = 0; i < globals.owners.length; i++) {
+        let testOwner = globals.owners[i];
+        if (confirmedOwners.includes(testOwner)) {
+            ownersAlreadyConfirmed.push(globals.owners[i]);
+        } else {
+            ownersNotConfirmed.push(globals.owners[i]);
         }
-        {
-            let div = document.createElement('div');
-            div.innerText = `Gas (ETH) transferred: ${value}`;
-            newDiv.appendChild(div);
+    }
+
+    {
+        let parentDiv = document.createElement('div');
+        parentDiv.className = "address-box-entry";
+
+        parentDiv.appendChild(createDivWithClassAndContent(
+            "details-label transaction-details-header-label",
+            "Confirmed by:"));
+
+        let children = [];
+        for (let i = 0; i < ownersAlreadyConfirmed.length; i++) {
+            let owner = ownersAlreadyConfirmed[i];
+            let createdDiv = createDivWithClassAndContent(
+                "address-box",
+                `<a href="https://holesky.etherscan.io/address/${owner}">${owner}</a>`,
+                true
+            );
+            children.push(createdDiv);
         }
+        let childrenhtml = children.map((x) => x.outerHTML).join("");
+        parentDiv.appendChild(createDivWithClassAndContent(
+            "details-value transaction-details-value",
+            childrenhtml,
+            true
+        ));
+        newDiv.appendChild(parentDiv);
+    }
+    {
+        let parentDiv = document.createElement('div');
+        parentDiv.className = "address-box-entry";
+
+        parentDiv.appendChild(createDivWithClassAndContent(
+            "details-label transaction-details-header-label",
+            "Not (yet) confirmed by:"));
+
+        let children = [];
+        for (let i = 0; i < ownersNotConfirmed.length; i++) {
+            let owner = ownersNotConfirmed[i];
+            let createdDiv = createDivWithClassAndContent(
+                "address-box",
+                `<a href="https://holesky.etherscan.io/address/${owner}">${owner}</a>`,
+                true
+            );
+            children.push(createdDiv);
+        }
+        let childrenhtml = children.map((x) => x.outerHTML).join("");
+        parentDiv.appendChild(createDivWithClassAndContent(
+            "details-value transaction-details-value",
+            childrenhtml,
+            true
+        ));
+        newDiv.appendChild(parentDiv);
+    }
+    {
+        let parentDiv = document.createElement('div');
+        parentDiv.className = "address-box-entry";
+
+        parentDiv.appendChild(createDivWithClassAndContent(
+            "details-label transaction-details-header-label",
+            "Transaction status:"));
+        parentDiv.appendChild(createDivWithClassAndContent(
+            "details-value transaction-details-value",
+            `${transactionStatus}`,
+            true
+        ));
+        newDiv.appendChild(parentDiv);
+    }
+
+    let isContractCall = (bytes.length > 0);
+
+    let abi = null;
+    let iface = null;
+    let func= null;
+    let decoded= null;
+
+    if (isContractCall) {
+        try {
+            abi = await downloadAbi("holesky", targetAddr);
+            iface = new Interface(abi);
+            func = iface.getFunction(hexlify(bytes.subarray(0, 4)));
+            decoded = iface.decodeFunctionData(func, hexlify(bytes));
+        } catch (e) {
+            console.error("Error decoding function data");
+            abi = null;
+            iface = null;
+            func = null;
+            decoded = null;
+        }
+    }
+
+    {
+        let parentDiv = document.createElement('div');
+        parentDiv.className = "address-box-entry";
+
+        parentDiv.appendChild(createDivWithClassAndContent(
+            "details-label address-box-label",
+            "Contract called: "));
+        parentDiv.appendChild(createDivWithClassAndContent(
+            "details-value address-box",
+            `<a href="https://holesky.etherscan.io/address/${targetAddr}">${targetAddr}</a>`,
+            true
+        ));
+        newDiv.appendChild(parentDiv);
+    }
+    {
+        let parentDiv = document.createElement('div');
+        parentDiv.className = "address-box-entry";
+
+        parentDiv.appendChild(createDivWithClassAndContent(
+            "details-label address-box-label",
+            "Gas (ETH) transferred: "));
+        parentDiv.appendChild(createDivWithClassAndContent(
+            "details-value ether-amount-box",
+            `${formatEther(value)} (${value} wei)`
+        ));
+        newDiv.appendChild(parentDiv);
+    }
+
+    if (func) {
         let fullFuncSig = func.name + "(";
         for (let i = 0; i < func.inputs.length; i++) {
             fullFuncSig += `${func.inputs[i].type},`;
         }
         fullFuncSig = fullFuncSig.slice(0, -1) + ")";
         {
-            let div = document.createElement('div');
-            div.innerHTML = `Method signature: <span class="function-signature">${fullFuncSig}</span>`;
-            newDiv.appendChild(div);
-        }
-        // Print decoded values and their types
-        for (let i = 0; i < decoded.length; i++) {
             {
-                let div = document.createElement('div');
-                div.className = "decoded-param";
-                div.innerText = `Param no ${i + 1} (${func.inputs[i].type}): ${decoded[i]}`;
-                newDiv.appendChild(div);
+                let parentDiv = document.createElement('div');
+                parentDiv.className = "address-box-entry";
+
+                parentDiv.appendChild(createDivWithClassAndContent(
+                    "details-label address-box-label",
+                    "Function signature: "));
+                parentDiv.appendChild(createDivWithClassAndContent(
+                    "details-value address-box",
+                    `${fullFuncSig}`
+                ));
+                newDiv.appendChild(parentDiv);
             }
         }
-        {
-            let div = document.createElement('div');
-            div.innerText = `Call data: ${data}`;
-            newDiv.appendChild(div);
+        // Print decoded values and their types
+        if (decoded) {
+            for (let i = 0; i < decoded.length; i++) {
+                let parentDiv = document.createElement('div');
+                parentDiv.className = "address-box-entry";
+
+                parentDiv.appendChild(createDivWithClassAndContent(
+                    "details-label address-box-label",
+                    `Param no ${i + 1}: `));
+                parentDiv.appendChild(createDivWithClassAndContent(
+                    "details-value param-data-box",
+                    `${decoded[i]}`
+                ));
+                newDiv.appendChild(parentDiv);
+            }
         }
 
-        document.getElementById('transaction-details').appendChild(newDiv);
-    } else {
-        {
-            let div = document.createElement('div');
-            div.innerText = `Target address: ${targetAddr}`;
-            newDiv.appendChild(div);
-        }
-        {
-            let div = document.createElement('div');
-            div.innerText = `Value: ${value}`;
-            newDiv.appendChild(div);
-        }
-        {
-            let div = document.createElement('div');
-            div.innerText = `Call data: ${data}`;
-            newDiv.appendChild(div);
-        }
     }
+
+    {
+        let parentDiv = document.createElement('div');
+        parentDiv.className = "address-box-entry";
+
+        parentDiv.appendChild(createDivWithClassAndContent(
+            "details-label address-box-label",
+            "Full call data:"));
+        parentDiv.appendChild(createDivWithClassAndContent(
+            "details-value call-data-box",
+            `${data}`,
+            true
+        ));
+        newDiv.appendChild(parentDiv);
+    }
+
+    document.getElementById('transaction-details').appendChild(newDiv);
+
 
 
 
@@ -254,10 +416,10 @@ async function get_chain_id() {
     console.log(chainId);
     if (parseInt(chainId) === 17000) {
         network = "holesky";
-        document.getElementById("connected-network").innerText = "Connected to Holesky testnet:";
+        document.getElementById("connected-network").innerText = "Connected via MetaMask to Holesky testnet:";
     } else if (parseInt(chainId) === 1) {
         network = "mainnet";
-        document.getElementById("connected-network").innerText = "Connected to Ethereum Mainnet:";
+        document.getElementById("connected-network").innerText = "Connected via MetaMask to Ethereum Mainnet:";
     } else {
         document.getElementById('error-box').innerText = "Please switch to the correct network";
     }
@@ -267,16 +429,16 @@ async function get_chain_id() {
         localStorage.setItem(`multisig_${network}`, uriParams.get('multisig'));
     }
 
-    multisigAddress = getMultiSigAddress(network);
+    globals.multiSigAddress = getMultiSigAddress(network);
 
     document.getElementById("page-content").setAttribute("style", "display: block;")
 
-    document.getElementById("multisig-address").innerText = multisigAddress;
-    document.getElementById("multisig-address").href = "https://holesky.etherscan.io/address/" + multisigAddress;
+    document.getElementById("multisig-address").innerText = globals.multiSigAddress;
+    document.getElementById("multisig-address").href = "https://holesky.etherscan.io/address/" + globals.multiSigAddress;
 
-    const contract = new ethers.Contract(multisigAddress, gnosisAbi, new ethers.BrowserProvider(provider))
+    const contract = new ethers.Contract(globals.multiSigAddress, gnosisAbi, new ethers.BrowserProvider(provider))
 
-    await getOwners(contract);
+    globals.owners = await getOwners(contract);
     await getTransactionsIds(contract, true);
     await getTransactionsIds(contract, false);
 }
@@ -284,9 +446,9 @@ async function get_chain_id() {
 function removeOwner(address) {
     let iface = new Interface(gnosisAbi);
     let calldata = iface.encodeFunctionData("removeOwner", [address]);
-    let call = iface.encodeFunctionData("submitTransaction", [multisigAddress, 0, calldata]);
+    let call = iface.encodeFunctionData("submitTransaction", [globals.multiSigAddress, 0, calldata]);
     let params = {
-        to: multisigAddress,
+        to: globals.multiSigAddress,
         data: calldata
     };
     let gasLimit = 1000000;
@@ -295,7 +457,7 @@ function removeOwner(address) {
         "method": "eth_sendTransaction",
         "params": [
             {
-                "to": multisigAddress,
+                "to": globals.multiSigAddress,
                 "from": connected,
                 "gas": gasLimitHex,
                 "value": "0x0",
@@ -308,9 +470,9 @@ function addOwner() {
     let address = document.getElementById('new-owner-address').value;
     let iface = new Interface(gnosisAbi);
     let calldata = iface.encodeFunctionData("addOwner", [address]);
-    let call = iface.encodeFunctionData("submitTransaction", [multisigAddress, 0, calldata]);
+    let call = iface.encodeFunctionData("submitTransaction", [globals.multiSigAddress, 0, calldata]);
     let params = {
-        to: multisigAddress,
+        to: globals.multiSigAddress,
         data: calldata
     };
     let gasLimit = 1000000;
@@ -319,7 +481,7 @@ function addOwner() {
         "method": "eth_sendTransaction",
         "params": [
             {
-                "to": multisigAddress,
+                "to": globals.multiSigAddress,
                 "from": connected,
                 "gas": gasLimitHex,
                 "value": "0x0",
@@ -364,7 +526,7 @@ async function sendErc20Token() {
             "method": "eth_sendTransaction",
             "params": [
                 {
-                    "to": multisigAddress,
+                    "to": globals.multiSigAddress,
                     "from": connected,
                     "gas": gasLimitHex,
                     "value": "0x0",
@@ -397,7 +559,7 @@ function sendGasTransfer() {
             "method": "eth_sendTransaction",
             "params": [
                 {
-                    "to": multisigAddress,
+                    "to": globals.multiSigAddress,
                     "from": connected,
                     "gas": gasLimitHex,
                     "value": "0x0",

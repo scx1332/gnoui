@@ -48,6 +48,37 @@ input[type="reset"]:disabled {
     opacity: 0.6; /* Slight transparency for disabled */
 }
 
+/* Style the text input */
+input {
+    width: 100%;
+    max-width: 20em; /* Maximum width of the input field */
+    padding: 0.3em;    /* Padding inside the input field */
+    font-size: 1.1em;  /* Font size for the input text */
+    border: 1px solid #ccc; /* Border with a light gray color */
+    border-radius: 0.3em; /* Rounded corners */
+    box-sizing: border-box; /* Ensures padding is included in the total width and height */
+    transition: border-color 0.3s; /* Smooth transition for border color */
+}
+
+input:focus {
+    border-color: #007BFF; /* Change border color on focus */
+    outline: none; /* Remove default outline */
+}
+
+input::placeholder {
+    color: #aaa; /* Placeholder color for modern browsers */
+}
+
+#new-contract-address-box {
+    display: none;
+}
+#new-contract-address-box button {
+    margin: 0.3em;
+}
+#new-contract-address-box input {
+    margin: 0.3em;
+}
+
 .metamask-connection-box {
     border: 1px solid #ccc;
     padding: 0.5em;
@@ -88,3 +119,41 @@ input[type="reset"]:disabled {
     color: #fff; /* Text color on hover */
     background-color: #007BFF; /* Background color on hover */
 }
+
+.address-box-entry {
+    display: flex;
+    justify-content: left;
+    align-items: center;
+    padding: 0.5em;
+    border-bottom: 1px solid #ccc;
+}
+
+.details-label {
+    min-width: 12em;
+}
+.details-value {
+    max-width: 50em;
+}
+.call-data-box {
+    white-space: pre-wrap;
+    font-family: monospace;
+    word-wrap: anywhere;
+    overflow-wrap: anywhere;
+}
+.param-data-box {
+    white-space: pre-wrap;
+    font-family: monospace;
+    word-wrap: anywhere;
+    overflow-wrap: anywhere;
+}
+.ether-amount-box {
+    font-family: monospace;
+}
+
+
+
+
+
+
+
+
