@@ -557,6 +557,47 @@ function addOwner() {
     });
 }
 
+async function sendCustomTransaction() {
+    let destContract = document.getElementById('any-contract-address').value;
+    let anyData = document.getElementById('any-contract-data').value;
+    let anyValue = document.getElementById('any-contract-value').value;
+    let bigAmount = parseEther(anyValue);
+    let bigAmountHex = '0x' + bigAmount.toString(16);
+    bigAmount = BigInt(bigAmountHex);
+
+    let bytes = looseArrayify(anyData);
+    let abi = await downloadAbi("holesky", destContract);
+    let iface = new Interface(abi);
+    let func = iface.getFunction(hexlify(bytes.subarray(0, 4)));
+    let decoded = iface.decodeFunctionData(func, hexlify(bytes));
+
+    let confirmStr = "Are you sure you want to send \n";
+    confirmStr += `to ${destContract} \n`;
+    confirmStr += `value: ${bigAmount} \n`;
+    confirmStr += `function: ${func.name}(${func.inputs.map(input => input.type).join(",")}) \n`;
+    confirmStr += `decoded: ${decoded}`;
+
+    if (confirm(confirmStr)) {
+        let gasLimit = 1000000;
+        let gasLimitHex = gasLimit.toString(16);
+        let call = (new Interface(gnosisAbi)).encodeFunctionData(
+            "submitTransaction",
+            [destContract, bigAmount, bytes]);
+        window.ethereum.request({
+            "method": "eth_sendTransaction",
+            "params": [
+                {
+                    "to": globals.multiSigAddress,
+                    "from": connected,
+                    "gas": gasLimitHex,
+                    "value": "0x0",
+                    "data": call,
+                }
+            ]
+        });
+    }
+}
+
 async function sendErc20Token() {
     let tokenAddress = document.getElementById('token-address').value;
     let destinationAddress = document.getElementById('token-dest-address').value;

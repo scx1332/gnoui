@@ -105,16 +105,19 @@
                 <div style="display: flex; flex-direction: column;">
                     <h3>Send any transaction</h3>
                     <div style="margin: 0.2em;">
-                        Contract address: <input type="text" id="contract-address"/>
+                        Contract address: <input type="text" id="any-contract-address" value="0x8888888815bf4DB87e57B609A50f938311EEd068"/>
                     </div>
                     <div style="margin: 0.2em;">
-                        Encoded data: <input type="text" id="any-data"/>
+                        Encoded data:
+                        <textarea id="any-contract-data"
+                            style="width: 100%;resize:none;font-size: 1.1em;"
+                            oninput='this.style.height = "";this.style.height = this.scrollHeight + 3 + "px"'>0xa9059cbb00000000000000000000000023d57ac10a98e14f30068d06403e8f9d976574280000000000000000000000000000000000000000000000000000000000002710</textarea>
                     </div>
                     <div style="margin: 0.2em;">
-                        Eth value: <input type="text" id="any-gas-value"/>
+                        Eth value: <input type="text" id="any-contract-value" value="0"/>
                     </div>
                     <div style="margin: 0.2em;">
-                        <button id="send-any-button" onclick="sendTransaction()">Check values</button>
+                        <button id="send-any-button" onclick="sendCustomTransaction()">Check values</button>
                     </div>
                 </div>
 

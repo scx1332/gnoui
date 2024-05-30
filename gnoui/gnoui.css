@@ -68,6 +68,26 @@ input::placeholder {
     color: #aaa; /* Placeholder color for modern browsers */
 }
 
+/* Style the text input */
+textarea {
+    width: 100%;
+    padding: 0.3em;    /* Padding inside the input field */
+    font-size: 0.9em;  /* Font size for the input text */
+    border: 1px solid #ccc; /* Border with a light gray color */
+    border-radius: 0.3em; /* Rounded corners */
+    box-sizing: border-box; /* Ensures padding is included in the total width and height */
+    transition: border-color 0.3s; /* Smooth transition for border color */
+}
+
+textarea:focus {
+    border-color: #007BFF; /* Change border color on focus */
+    outline: none; /* Remove default outline */
+}
+
+textarea::placeholder {
+    color: #aaa; /* Placeholder color for modern browsers */
+}
+
 #new-contract-address-box {
     display: none;
 }
