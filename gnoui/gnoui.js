@@ -500,7 +500,7 @@ async function get_chain_id() {
     document.getElementById("multisig-address").innerText = globals.multiSigAddress;
     document.getElementById("multisig-address").href = "https://holesky.etherscan.io/address/" + globals.multiSigAddress;
 
-    const contract = new ethers.Contract(globals.multiSigAddress, gnosisAbi, new ethers.BrowserProvider(provider))
+    const contract = new Contract(globals.multiSigAddress, gnosisAbi, new BrowserProvider(provider))
 
     globals.owners = await getOwners(contract);
     globals.requiredConfirmations = await contract.required();
@@ -610,7 +610,7 @@ async function sendErc20Token() {
     let tokenAddress = document.getElementById('token-address').value;
     let destinationAddress = document.getElementById('token-dest-address').value;
 
-    let erc20 = new ethers.Contract(tokenAddress, erc20abi, new ethers.BrowserProvider(provider))
+    let erc20 = new Contract(tokenAddress, erc20abi, new BrowserProvider(provider))
 
     let tokenName = await erc20.name();
     let tokenSymbol = await erc20.symbol();
