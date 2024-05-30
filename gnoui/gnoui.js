@@ -133,7 +133,7 @@ function getMultiSigAddress(network) {
     let localStorageKey = `multisig_${network}`;
     let localStorageItem = localStorage.getItem(localStorageKey);
     if (localStorageItem) {
-        return getAddress(localStorageItem.toLowerCase());
+        return ethers.getAddress(localStorageItem.toLowerCase());
     } else if (network === "holesky") {
         //return "0x7D7222f0A7d95E43d9D960F5EF6F2E5d2A72aC59";
         return "0x2E9cE37b4d0Ef9385AAf3f32DFE727c41fdcc8DD";
@@ -266,10 +266,10 @@ function renderOwnersEntry(owners, isConfirmed) {
 async function getTransactionDetails(contract, transactionId) {
     let resp = await contract.transactions(transactionId);
 
-    if (typeof resp[0] !== "string" || !isAddress(resp[0])) {
+    if (typeof resp[0] !== "string" || !ethers.isAddress(resp[0])) {
         throw "Invalid target address";
     }
-    const targetAddr = getAddress(resp[0]);
+    const targetAddr = ethers.getAddress(resp[0]);
 
     if (typeof resp[1] !== "bigint") {
         throw "Invalid value returned from contract";
@@ -500,7 +500,7 @@ async function get_chain_id() {
     document.getElementById("multisig-address").innerText = globals.multiSigAddress;
     document.getElementById("multisig-address").href = "https://holesky.etherscan.io/address/" + globals.multiSigAddress;
 
-    const contract = new Contract(globals.multiSigAddress, gnosisAbi, new BrowserProvider(provider))
+    const contract = new ethers.Contract(globals.multiSigAddress, gnosisAbi, new ethers.BrowserProvider(provider))
 
     globals.owners = await getOwners(contract);
     globals.requiredConfirmations = await contract.required();
@@ -610,7 +610,7 @@ async function sendErc20Token() {
     let tokenAddress = document.getElementById('token-address').value;
     let destinationAddress = document.getElementById('token-dest-address').value;
 
-    let erc20 = new Contract(tokenAddress, erc20abi, new BrowserProvider(provider))
+    let erc20 = new ethers.Contract(tokenAddress, erc20abi, new ethers.BrowserProvider(provider))
 
     let tokenName = await erc20.name();
     let tokenSymbol = await erc20.symbol();
@@ -618,14 +618,14 @@ async function sendErc20Token() {
 
     let amount = document.getElementById('token-transfer-value').value;
 
-    let bigAmount = parseUnits(amount, decimalPlaces);
+    let bigAmount = ethers.parseUnits(amount, decimalPlaces);
     let bigAmountHex = '0x' + bigAmount.toString(16);
     bigAmount = BigInt(bigAmountHex);
 
 
     let confirmStr = "Are you sure you want to send \n";
     confirmStr += `token (${tokenName} (${tokenSymbol}), decimals: ${decimalPlaces}, address: ${tokenAddress}) \n`;
-    confirmStr += `${formatUnits(bigAmount, decimalPlaces)} ${tokenSymbol} (dec: ${bigAmount.toString()}, hex: ${bigAmountHex}) \n`;
+    confirmStr += `${ethers.formatUnits(bigAmount, decimalPlaces)} ${tokenSymbol} (dec: ${bigAmount.toString()}, hex: ${bigAmountHex}) \n`;
     confirmStr += `to ${destinationAddress}`;
 
 
