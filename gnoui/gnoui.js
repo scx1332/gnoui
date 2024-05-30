@@ -1,3 +1,27 @@
+import {parseEther, getAddress, formatEther, hexlify, Interface, Contract, BrowserProvider, formatUnits, parseUnits, isAddress, isHexString, AbiCoder} from "./ethers.js";
+
+
+/**
+ * This should be in library, I couldn't find it in ethers.js, so I have to write my own
+ * @param {string} hexString
+ * @type {Uint8Array}
+ */
+function arrayify(hexString) {
+    if (!isHexString(hexString, hexString.length / 2 - 1)) {
+        throw "Invalid hex string";
+    }
+    let arrayLength = hexString.length / 2 - 1;
+    // Create a Uint8Array with half the length of the hex string
+    let array = new Uint8Array(arrayLength);
+
+    for (let i = 0; i < arrayLength; i += 1) {
+        // Convert each pair of hex characters to a byte
+        array[i] = parseInt(hexString.substring(i * 2 + 2, i * 2 + 4), 16);
+    }
+
+    return array;
+}
+
 let dappMetadata = {
     name: "Gnosis simple UI",
     url: "https://gnosis.dev.golem.network"
@@ -25,10 +49,14 @@ function showNewContractOptions() {
     document.getElementById("new-contract-address-box").setAttribute("style", "display: block;");
     document.getElementById("switch-new-contract-address").setAttribute("disabled", "true");
 }
+window.showNewContractOptions = showNewContractOptions;
+
 function switchMultiSigCancel() {
     document.getElementById("new-contract-address-box").setAttribute("style", "display: none;");
     document.getElementById("switch-new-contract-address").removeAttribute("disabled");
 }
+window.switchMultiSig = switchMultiSigCancel;
+
 function switchMultiSig() {
     let newAddress = document.getElementById("new-contract-address").value;
     if (newAddress.length !== 42) {
@@ -38,6 +66,8 @@ function switchMultiSig() {
     localStorage.setItem(`multisig_${network}`, newAddress);
     window.location.reload();
 }
+window.switchMultiSig = switchMultiSig;
+
 function connect() {
     //document.getElementById("connect-button").setAttribute("disabled", "true");
     sdk.connect()
@@ -50,6 +80,7 @@ function connect() {
             //document.getElementById("connect-button").removeAttribute("disabled");
         });
 }
+window.connect = connect;
 
 
 function getUriParameters() {
@@ -76,8 +107,8 @@ async function setRequiredConfirmations() {
             }
         ]
     });
-
 }
+window.setRequiredConfirmations = setRequiredConfirmations;
 
 function updateOwners() {
     for (let i = 0; i < globals.owners.length; i++) {
@@ -133,7 +164,7 @@ function getMultiSigAddress(network) {
     let localStorageKey = `multisig_${network}`;
     let localStorageItem = localStorage.getItem(localStorageKey);
     if (localStorageItem) {
-        return ethers.getAddress(localStorageItem.toLowerCase());
+        return getAddress(localStorageItem.toLowerCase());
     } else if (network === "holesky") {
         //return "0x7D7222f0A7d95E43d9D960F5EF6F2E5d2A72aC59";
         return "0x2E9cE37b4d0Ef9385AAf3f32DFE727c41fdcc8DD";
@@ -266,10 +297,10 @@ function renderOwnersEntry(owners, isConfirmed) {
 async function getTransactionDetails(contract, transactionId) {
     let resp = await contract.transactions(transactionId);
 
-    if (typeof resp[0] !== "string" || !ethers.isAddress(resp[0])) {
+    if (typeof resp[0] !== "string" || !isAddress(resp[0])) {
         throw "Invalid target address";
     }
-    const targetAddr = ethers.getAddress(resp[0]);
+    const targetAddr = getAddress(resp[0]);
 
     if (typeof resp[1] !== "bigint") {
         throw "Invalid value returned from contract";
@@ -294,7 +325,7 @@ async function getTransactionDetails(contract, transactionId) {
         throw "Data must start with 0x";
     }
 
-    let bytes = looseArrayify(data);
+    let bytes = arrayify(data);
     // check if Uint8Array
     if (!bytes instanceof Uint8Array) {
         throw "Data must be Uint8Array";
@@ -353,18 +384,18 @@ async function getTransactionDetails(contract, transactionId) {
     let decoded= null;
 
     if (isContractCall) {
-        try {
+        //try {
             abi = await downloadAbi("holesky", targetAddr);
             iface = new Interface(abi);
             func = iface.getFunction(hexlify(bytes.subarray(0, 4)));
             decoded = iface.decodeFunctionData(func, hexlify(bytes));
-        } catch (e) {
-            console.error("Error decoding function data");
+        /*} catch (e) {
+            console.error(`Error decoding function data: ${e}`);
             abi = null;
             iface = null;
             func = null;
             decoded = null;
-        }
+        }*/
     }
 
     {
@@ -473,16 +504,17 @@ async function confirmTransaction(transactionId) {
         ]
     });
 }
+window.confirmTransaction = confirmTransaction;
 
 
 async function get_chain_id() {
     let chainId = await provider.request({ method: 'eth_chainId' });
     console.log(chainId);
     if (parseInt(chainId) === 17000) {
-        network = "holesky";
+        globals.network = "holesky";
         document.getElementById("connected-network").innerText = "Connected via MetaMask to Holesky testnet:";
     } else if (parseInt(chainId) === 1) {
-        network = "mainnet";
+        globals.network = "mainnet";
         document.getElementById("connected-network").innerText = "Connected via MetaMask to Ethereum Mainnet:";
     } else {
         document.getElementById('error-box').innerText = "Please switch to the correct network";
@@ -494,13 +526,13 @@ async function get_chain_id() {
     }
 
 
-    globals.multiSigAddress = getMultiSigAddress(network);
+    globals.multiSigAddress = getMultiSigAddress(globals.network);
 
 
     document.getElementById("multisig-address").innerText = globals.multiSigAddress;
     document.getElementById("multisig-address").href = "https://holesky.etherscan.io/address/" + globals.multiSigAddress;
 
-    const contract = new ethers.Contract(globals.multiSigAddress, gnosisAbi, new ethers.BrowserProvider(provider))
+    const contract = new Contract(globals.multiSigAddress, gnosisAbi, new BrowserProvider(provider))
 
     globals.owners = await getOwners(contract);
     globals.requiredConfirmations = await contract.required();
@@ -536,6 +568,8 @@ function removeOwner(address) {
         ]
     });
 }
+window.removeOwner = removeOwner;
+
 function addOwner() {
     let address = document.getElementById('new-owner-address').value;
     let iface = new Interface(gnosisAbi);
@@ -556,14 +590,7 @@ function addOwner() {
         ]
     });
 }
-
-function iterateAllGlobalSymbols() {
-    for (let key in window) {
-        if (window.hasOwnProperty(key)) {
-            console.log(`${typeof (window[key])} ${key}`);
-        }
-    }
-}
+window.addOwner = addOwner;
 
 async function sendCustomTransaction() {
     let destContract = document.getElementById('any-contract-address').value;
@@ -573,7 +600,7 @@ async function sendCustomTransaction() {
     let bigAmountHex = '0x' + bigAmount.toString(16);
     bigAmount = BigInt(bigAmountHex);
 
-    let bytes = looseArrayify(anyData);
+    let bytes = arrayify(anyData);
     let abi = await downloadAbi("holesky", destContract);
     let iface = new Interface(abi);
     let func = iface.getFunction(hexlify(bytes.subarray(0, 4)));
@@ -605,12 +632,13 @@ async function sendCustomTransaction() {
         });
     }
 }
+window.sendCustomTransaction = sendCustomTransaction;
 
 async function sendErc20Token() {
     let tokenAddress = document.getElementById('token-address').value;
     let destinationAddress = document.getElementById('token-dest-address').value;
 
-    let erc20 = new ethers.Contract(tokenAddress, erc20abi, new ethers.BrowserProvider(provider))
+    let erc20 = new Contract(tokenAddress, erc20abi, new BrowserProvider(provider))
 
     let tokenName = await erc20.name();
     let tokenSymbol = await erc20.symbol();
@@ -618,14 +646,14 @@ async function sendErc20Token() {
 
     let amount = document.getElementById('token-transfer-value').value;
 
-    let bigAmount = ethers.parseUnits(amount, decimalPlaces);
+    let bigAmount = parseUnits(amount, decimalPlaces);
     let bigAmountHex = '0x' + bigAmount.toString(16);
     bigAmount = BigInt(bigAmountHex);
 
 
     let confirmStr = "Are you sure you want to send \n";
     confirmStr += `token (${tokenName} (${tokenSymbol}), decimals: ${decimalPlaces}, address: ${tokenAddress}) \n`;
-    confirmStr += `${ethers.formatUnits(bigAmount, decimalPlaces)} ${tokenSymbol} (dec: ${bigAmount.toString()}, hex: ${bigAmountHex}) \n`;
+    confirmStr += `${formatUnits(bigAmount, decimalPlaces)} ${tokenSymbol} (dec: ${bigAmount.toString()}, hex: ${bigAmountHex}) \n`;
     confirmStr += `to ${destinationAddress}`;
 
 
@@ -650,10 +678,9 @@ async function sendErc20Token() {
             ]
         });
     }
-
-
-
 }
+window.sendErc20Token = sendErc20Token;
+
 function sendGasTransfer() {
     let address = document.getElementById('gas-destination-address').value;
     let amount = document.getElementById('gas-transfer-value').value;
@@ -684,6 +711,7 @@ function sendGasTransfer() {
         });
     }
 }
+window.sendGasTransfer = sendGasTransfer;
 
 function updateConnected() {
     let newDiv = createDivWithAddress(connected);
@@ -801,3 +829,9 @@ function nav_new_trans() {
     update_nav();
 }
 
+
+window.nav_trans_list = nav_trans_list;
+window.nav_contr_config = nav_contr_config;
+window.nav_new_token_trans = nav_new_token_trans;
+window.nav_new_eth_trans = nav_new_eth_trans;
+window.nav_new_trans = nav_new_trans;
