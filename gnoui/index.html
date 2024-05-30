@@ -22,7 +22,7 @@
 <div id="page-content" style="display: none;">
     <div id="contract-owners">
         <div style="border: 1px solid blue; padding: 1em;">
-            <div style="border: 1px solid blue; padding: 1em;">
+            <div style="padding: 0.5em;margin-bottom: 1em;">
                 Current multi-signature contract address: <div class="address-box address-box-multi-sig"><a id="multisig-address" target="_blank"></a> <button id="switch-new-contract-address" onclick="showNewContractOptions()">Change</button> </div>
                 <div id="new-contract-address-box">
                     Select your gnosis safe contract: <input type="text" id="new-contract-address"/>
@@ -33,45 +33,48 @@
             <div class="navigation" style="display: flex; flex-direction: row;">
                 <button id="nav-trans-list-btn" disabled="true" onclick="nav_trans_list()">Transaction<br/>List</button>
                 <button id="nav-contr-config-btn" onclick="nav_contr_config()">Contract<br/>configuration</button>
-                <button id="nav-new-trans-btn" onclick="nav_new_trans()">New<br/>transaction</button>
+                <button id="nav-new-eth-trans-btn" onclick="nav_new_eth_trans()">New ETH <br/> transfer</button>
+                <button id="nav-new-token-trans-btn" onclick="nav_new_token_trans()">New ERC20 <br/> transfer</button>
+                <button id="nav-new-trans-btn" onclick="nav_new_trans()">New contract <br/> call</button>
             </div>
-            <div style="border: 1px solid blue; padding: 1em;">
+            <div id="nav-obj-transaction-list" style="border: 1px solid blue; padding: 1em;">
                 <div id="div-transaction-list">
                 </div>
             </div>
-            <div style="border: 1px solid blue; padding: 1em;">
+            <div id="nav-obj-ownership-management">
                 <h2>Ownership management</h2>
                 <div style="display: flex; flex-direction: column">
                     <div>
-                        Owners:
-                        <ul id="owners"></ul>
+                        <div style="margin-bottom: 0.5em; font-weight: bold;">Current owners:</div>
+                        <div id="owners-list-ul"></div>
                     </div>
                 </div>
-                <div style="display: flex; flex-direction: column">
-                    <h3>Add owner</h3>
-                    <div>
-                        <button id="add-owner-button" onclick="addOwner()">Add owner</button>
+                <div style="display: flex; flex-direction: row; margin-top: 1em;">
+                    <div style="min-width: 22.3em;">
+                        <input style="width: 100%;" type="text" id="new-owner-address"/>
                     </div>
                     <div>
-                        <input type="text" id="new-owner-address"/>
+                        <button id="add-owner-button" onclick="addOwner()" style="margin-left: 0.5em">Add new owner</button>
                     </div>
                 </div>
                 <div style="display: flex; flex-direction: column">
                     <h3>Change required transactions</h3>
-                    <div>
-                        <button id="set-required-confirmations-button" onclick="setRequiredConfirmations()">Set required confirmations</button>
-                    </div>
-                    <div>
-                        <input type="number" id="required-confirmations"/>
+                    <div style="display: flex; flex-direction: row; align-content: center;">
+                        <div>
+                            <button id="set-required-confirmations-button" onclick="setRequiredConfirmations()">Set required confirmations</button>
+                        </div>
+                        <div style="margin-left: 0.5em">
+                            <input id="input-required-confirmations" type="number" style="width: 3em; font-size: 1.3em"/>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div style="border: 1px solid blue; padding: 1em; display: flex; flex-direction: column;">
+            <div id="nav-obj-new-eth-transaction" style="border: 1px solid blue; padding: 1em; display: flex; flex-direction: column;">
                 <h2>Operations</h2>
                 <div>
                     <h3>Send ETH (pure gas token) transfer</h3>
                     <div style="margin: 0.2em;">
-                        Receiver (destination) address: <input type="text" id="gas-destination-address" value="0xd8da6bf26964af9d7eed9e03e53415d37aa96045"/>
+                        Receiver (destination) address <input type="text" id="gas-destination-address" value="0xd8da6bf26964af9d7eed9e03e53415d37aa96045"/>
                     </div>
                     <div style="margin: 0.2em;">
                         Value: <input type="text" id="gas-transfer-value" value="0.000000000001"/>
@@ -80,6 +83,8 @@
                         <button id="send-gas-button" onclick="sendGasTransfer()">Send transaction</button>
                     </div>
                 </div>
+            </div>
+            <div id="nav-obj-new-token-transaction">
                 <div style="display: flex; flex-direction: column;">
                     <h3>Send ERC20 token transfer</h3>
                     <div style="margin: 0.2em;">
@@ -95,6 +100,8 @@
                         <button id="send-token-button" onclick="sendErc20Token()">Send token</button>
                     </div>
                 </div>
+            </div>
+            <div id="nav-obj-new-transaction">
                 <div style="display: flex; flex-direction: column;">
                     <h3>Send any transaction</h3>
                     <div style="margin: 0.2em;">

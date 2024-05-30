@@ -51,9 +51,8 @@ input[type="reset"]:disabled {
 /* Style the text input */
 input {
     width: 100%;
-    max-width: 20em; /* Maximum width of the input field */
     padding: 0.3em;    /* Padding inside the input field */
-    font-size: 1.1em;  /* Font size for the input text */
+    font-size: 0.9em;  /* Font size for the input text */
     border: 1px solid #ccc; /* Border with a light gray color */
     border-radius: 0.3em; /* Rounded corners */
     box-sizing: border-box; /* Ensures padding is included in the total width and height */
@@ -98,7 +97,11 @@ input::placeholder {
     border: 2px solid #ccc;
     padding: 0.5em;
     margin-bottom: 2.0em;
+    margin-top: 2em;
     max-width: 50em;
+}
+#div-transaction-list {
+    padding: 0.5em;
 }
 
 .transaction-details div {
@@ -181,7 +184,6 @@ input::placeholder {
     flex-direction: row;
     justify-content: left;
     padding: 0.5em;
-    border-bottom: 1px solid #ccc;
 }
 
 /* Basic styles */
@@ -210,5 +212,25 @@ input::placeholder {
     color: #888888;
 }
 
+#nav-obj-ownership-management {
+    padding: 1em;
+    margin-left: 0.5em;
+    border: 2px solid #ccc;
+    margin-top: 2em;
+}
 
-
+.owner-address-entry {
+    display: flex;
+    justify-content: left;
+    flex-direction: row;
+    margin-bottom: 0.3em;
+}
+.owner-address-entry .address-box {
+    margin-top: 0.3em;
+}
+.owner-address-entry button {
+    margin-left: 0.5em;
+}
+.transaction-details-header-label {
+    font-weight: bold;
+}

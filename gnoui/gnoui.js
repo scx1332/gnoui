@@ -58,7 +58,7 @@ function getUriParameters() {
 }
 
 async function setRequiredConfirmations() {
-    let confirmations = parseInt(document.getElementById("required-confirmations").value);
+    let confirmations = parseInt(document.getElementById("input-required-confirmations").value);
     let iface = new Interface(gnosisAbi);
     let calldata = iface.encodeFunctionData("changeRequirement", [confirmations]);
     let call = iface.encodeFunctionData("submitTransaction", [globals.multiSigAddress, 0, calldata]);
@@ -82,7 +82,19 @@ async function setRequiredConfirmations() {
 function updateOwners() {
     for (let i = 0; i < globals.owners.length; i++) {
         let own = globals.owners[i];
-        document.getElementById('owners').innerHTML += `<li>${own} - <button onclick="removeOwner('${own}')">Remove</button> </li>`;
+
+        let par = createDivWithClass("owner-address-entry")
+        let el = createDivWithAddress(
+            `${own}`
+        );
+        par.appendChild(el);
+        par.appendChild(createDivWithClassAndContent(
+            "owner-address-entry-remove",
+            `<button onclick="removeOwner('${own}')">Remove</button>`,
+            true
+        ));
+
+        document.getElementById('owners-list-ul').appendChild(par);
     }
 }
 
@@ -240,7 +252,7 @@ function renderOwnersEntry(owners, isConfirmed) {
     entryDiv.className = "address-box-entry";
 
     entryDiv.appendChild(createDivWithClassAndContent(
-        `details-label transaction-details-header-label`,
+        `details-label`,
         isConfirmed ? "Confirmed by:" : "Not (yet) confirmed by:"));
 
     let div = createDivWithClass('div', "details-value transaction-details-value");
@@ -398,9 +410,9 @@ async function getTransactionDetails(contract, transactionId) {
         // Print decoded values and their types
         for (let i = 0; i < decoded.length; i++) {
             newDiv.appendChild(renderDetailsEntry(
-                "param-signature-label",
+                "param-data-label",
                 `Param no ${i + 1}:`,
-                "param-signature-box",
+                "param-data-box",
                 `${decoded[i]}`
             ));
         }
@@ -481,9 +493,9 @@ async function get_chain_id() {
         localStorage.setItem(`multisig_${network}`, uriParams.get('multisig'));
     }
 
+
     globals.multiSigAddress = getMultiSigAddress(network);
 
-    document.getElementById("page-content").setAttribute("style", "display: block;")
 
     document.getElementById("multisig-address").innerText = globals.multiSigAddress;
     document.getElementById("multisig-address").href = "https://holesky.etherscan.io/address/" + globals.multiSigAddress;
@@ -491,8 +503,15 @@ async function get_chain_id() {
     const contract = new ethers.Contract(globals.multiSigAddress, gnosisAbi, new ethers.BrowserProvider(provider))
 
     globals.owners = await getOwners(contract);
+    globals.requiredConfirmations = await contract.required();
+    document.getElementById("input-required-confirmations").value = globals.requiredConfirmations;
     updateOwners();
     updateConnected();
+    if (uriParams.has('nav')) {
+        localStorage.setItem("current-nav-item", uriParams.get('nav'));
+    }
+    update_nav();
+    document.getElementById("page-content").setAttribute("style", "display: block;")
 
     await getTransactionsIds(contract, true);
     await getTransactionsIds(contract, false);
@@ -661,23 +680,75 @@ function set_selected_nav(navItem) {
     document.getElementById("nav-trans-list-btn").removeAttribute("disabled");
     document.getElementById("nav-contr-config-btn").removeAttribute("disabled");
     document.getElementById("nav-new-trans-btn").removeAttribute("disabled");
-    if (navItem == "trans-list") {
+    document.getElementById("nav-new-token-trans-btn").removeAttribute("disabled");
+    document.getElementById("nav-new-eth-trans-btn").removeAttribute("disabled");
+
+    document.getElementById("nav-obj-new-transaction").setAttribute("style", "display: none;");
+    document.getElementById("nav-obj-new-eth-transaction").setAttribute("style", "display: none;");
+    document.getElementById("nav-obj-new-token-transaction").setAttribute("style", "display: none;");
+    document.getElementById("nav-obj-ownership-management").setAttribute("style", "display: none;");
+    document.getElementById("nav-obj-transaction-list").setAttribute("style", "display: none;");
+
+    if (navItem == "list") {
         document.getElementById("nav-trans-list-btn").setAttribute("disabled", "true");
-    } else if (navItem == "contr-config") {
+        document.getElementById("nav-obj-transaction-list").setAttribute("style", "display: block;");
+    } else if (navItem == "config") {
         document.getElementById("nav-contr-config-btn").setAttribute("disabled", "true");
-    } else if (navItem == "new-trans") {
+        document.getElementById("nav-obj-ownership-management").setAttribute("style", "display: block;");
+    } else if (navItem == "trans") {
         document.getElementById("nav-new-trans-btn").setAttribute("disabled", "true");
+        document.getElementById("nav-obj-new-transaction").setAttribute("style", "display: block;");
+    } else if (navItem == "token") {
+        document.getElementById("nav-new-token-trans-btn").setAttribute("disabled", "true");
+        document.getElementById("nav-obj-new-token-transaction").setAttribute("style", "display: block;");
+    } else if (navItem == "eth") {
+        document.getElementById("nav-new-eth-trans-btn").setAttribute("disabled", "true");
+        document.getElementById("nav-obj-new-eth-transaction").setAttribute("style", "display: block;");
     } else {
         console.error("Invalid nav item" + navItem);
         throw "Invalid nav item";
     }
 }
+
+function update_nav() {
+    //get from uri
+
+
+    let navItem = localStorage.getItem("current-nav-item");
+    if (navItem) {
+        try {
+            set_selected_nav(navItem);
+        } catch (e) {
+            if (e == "Invalid nav item") {
+                console.error("Invalid nav item in local storage");
+                localStorage.setItem("current-nav-item", "list");
+
+                set_selected_nav("list");
+            }
+        }
+    } else {
+        set_selected_nav("list");
+    }
+
+}
 function nav_trans_list() {
-    set_selected_nav("trans-list");
+    localStorage.setItem("current-nav-item", "list");
+    update_nav();
 }
 function nav_contr_config() {
-    set_selected_nav("contr-config");
+    localStorage.setItem("current-nav-item", "config");
+    update_nav();
+}
+function nav_new_token_trans() {
+    localStorage.setItem("current-nav-item", "token");
+    update_nav();
+}
+function nav_new_eth_trans() {
+    localStorage.setItem("current-nav-item", "eth");
+    update_nav();
 }
 function nav_new_trans() {
-    set_selected_nav("new-trans");
+    localStorage.setItem("current-nav-item", "trans");
+    update_nav();
 }
+
