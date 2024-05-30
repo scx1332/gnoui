@@ -377,31 +377,30 @@ async function getTransactionDetails(contract, transactionId) {
         ));
         newDiv.appendChild(parentDiv);
     }
+    if (data === "0x") {
+        newDiv.appendChild(renderDetailsEntry(
+            "function-signature-label",
+            "Function signature:",
+            "function-signature-box",
+            `No function call (pure ETH transfer)`
+        ));
 
-    if (func) {
-        let fullFuncSig = func.name + "(";
-        for (let input of func.inputs) {
-            fullFuncSig += `${input.type},`;
-        }
-        fullFuncSig = fullFuncSig.slice(0, -1) + ")";
-        {
-            newDiv.appendChild(renderDetailsEntry(
-                "function-signature-label",
-                "Function signature:",
-                "function-signature-box",
-                `${fullFuncSig}`
-            ));
-        }
+    } else if (func && decoded != null) {
+        let fullFuncSig = func.name + "(" + func.inputs.map(input => input.type).join(",") + ")";
+        newDiv.appendChild(renderDetailsEntry(
+            "function-signature-label",
+            "Function signature:",
+            "function-signature-box",
+            `${fullFuncSig}`
+        ));
         // Print decoded values and their types
-        if (decoded) {
-            for (let i = 0; i < decoded.length; i++) {
-                newDiv.appendChild(renderDetailsEntry(
-                    "param-signature-label",
-                    `Param no ${i + 1}:`,
-                    "param-signature-box",
-                    `${decoded[i]}`
-                ));
-            }
+        for (let i = 0; i < decoded.length; i++) {
+            newDiv.appendChild(renderDetailsEntry(
+                "param-signature-label",
+                `Param no ${i + 1}:`,
+                "param-signature-box",
+                `${decoded[i]}`
+            ));
         }
     } else {
         {
