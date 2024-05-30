@@ -55,7 +55,7 @@ function switchMultiSigCancel() {
     document.getElementById("new-contract-address-box").setAttribute("style", "display: none;");
     document.getElementById("switch-new-contract-address").removeAttribute("disabled");
 }
-window.switchMultiSig = switchMultiSigCancel;
+window.switchMultiSigCancel = switchMultiSigCancel;
 
 function switchMultiSig() {
     let newAddress = document.getElementById("new-contract-address").value;
