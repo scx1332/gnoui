@@ -327,9 +327,11 @@ async function getTransactionDetails(contract, transactionId) {
         renderOwnersEntry(ownersAlreadyConfirmed, true)
     );
 
-    newDiv.appendChild(
-        renderOwnersEntry(ownersNotConfirmed, false)
-    );
+    if (!executed) {
+        newDiv.appendChild(
+            renderOwnersEntry(ownersNotConfirmed, false)
+        );
+    }
 
     let isContractCall = (bytes.length > 0);
 
@@ -653,4 +655,29 @@ function updateProvider(res) {
     promise.then(() => {
         // do nothing
     });
+}
+
+function set_selected_nav(navItem) {
+    document.getElementById("nav-trans-list-btn").removeAttribute("disabled");
+    document.getElementById("nav-contr-config-btn").removeAttribute("disabled");
+    document.getElementById("nav-new-trans-btn").removeAttribute("disabled");
+    if (navItem == "trans-list") {
+        document.getElementById("nav-trans-list-btn").setAttribute("disabled", "true");
+    } else if (navItem == "contr-config") {
+        document.getElementById("nav-contr-config-btn").setAttribute("disabled", "true");
+    } else if (navItem == "new-trans") {
+        document.getElementById("nav-new-trans-btn").setAttribute("disabled", "true");
+    } else {
+        console.error("Invalid nav item" + navItem);
+        throw "Invalid nav item";
+    }
+}
+function nav_trans_list() {
+    set_selected_nav("trans-list");
+}
+function nav_contr_config() {
+    set_selected_nav("contr-config");
+}
+function nav_new_trans() {
+    set_selected_nav("new-trans");
 }
