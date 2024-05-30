@@ -3,7 +3,7 @@ const __$G = (typeof globalThis !== 'undefined' ? globalThis: typeof window !== 
 /**
  *  The current version of Ethers.
  */
-const version = "6.12.2";
+const version = "6.12.0";
 
 /**
  *  Property helper functions.
@@ -11849,7 +11849,7 @@ class ParamType {
      *  Walks the **ParamType** with %%value%%, asynchronously calling
      *  %%process%% on each type, destructing the %%value%% recursively.
      *
-     *  This can be used to resolve ENS names by walking and resolving each
+     *  This can be used to resolve ENS naes by walking and resolving each
      *  ``"address"`` type.
      */
     async walkAsync(value, process) {
@@ -13889,11 +13889,7 @@ getSelector(fragment: ErrorFragment | FunctionFragment): string {
         if (typeof (value) === "string") {
             return new Interface(JSON.parse(value));
         }
-        // An Interface; possibly from another v6 instance
-        if (typeof (value.formatJson) === "function") {
-            return new Interface(value.formatJson());
-        }
-        // A legacy Interface; from an older version
+        // Maybe an interface from an older version, or from a symlinked copy
         if (typeof (value.format) === "function") {
             return new Interface(value.format("json"));
         }
@@ -16476,13 +16472,13 @@ class MulticoinProviderPlugin {
         return false;
     }
     /**
-     *  Resolves to the encoded %%address%% for %%coinType%%.
+     *  Resovles to the encoded %%address%% for %%coinType%%.
      */
     async encodeAddress(coinType, address) {
         throw new Error("unsupported coin");
     }
     /**
-     *  Resolves to the decoded %%data%% for %%coinType%%.
+     *  Resovles to the decoded %%data%% for %%coinType%%.
      */
     async decodeAddress(coinType, data) {
         throw new Error("unsupported coin");
@@ -18504,7 +18500,7 @@ class AbstractProvider {
         return resolve(address, fromBlock, toBlock);
     }
     /**
-     *  Returns or resolves to a transaction for %%request%%, resolving
+     *  Returns or resovles to a transaction for %%request%%, resolving
      *  any ENS names or [[Addressable]] and returning if already a valid
      *  transaction.
      */
@@ -20627,11 +20623,7 @@ class JsonRpcApiPollingProvider extends JsonRpcApiProvider {
     #pollingInterval;
     constructor(network, options) {
         super(network, options);
-        let pollingInterval = this._getOption("pollingInterval");
-        if (pollingInterval == null) {
-            pollingInterval = defaultOptions.pollingInterval;
-        }
-        this.#pollingInterval = pollingInterval;
+        this.#pollingInterval = 4000;
     }
     _getSubscriber(sub) {
         const subscriber = super._getSubscriber(sub);
@@ -21155,15 +21147,12 @@ class CloudflareProvider extends JsonRpcProvider {
  *  - Holesky Testnet (``holesky``)
  *  - Arbitrum (``arbitrum``)
  *  - Arbitrum Goerli Testnet (``arbitrum-goerli``)
- *  - Base (``base``)
- *  - Base Sepolia Testnet (``base-sepolia``)
  *  - BNB Smart Chain Mainnet (``bnb``)
  *  - BNB Smart Chain Testnet (``bnbt``)
  *  - Optimism (``optimism``)
  *  - Optimism Goerli Testnet (``optimism-goerli``)
  *  - Polygon (``matic``)
  *  - Polygon Mumbai Testnet (``matic-mumbai``)
- *  - Polygon Amoy Testnet (``matic-amoy``)
  *
  *  @_subsection api/providers/thirdparty:Etherscan  [providers-etherscan]
  */
@@ -21253,18 +21242,12 @@ class EtherscanProvider extends AbstractProvider {
                 return "https:/\/api.arbiscan.io";
             case "arbitrum-goerli":
                 return "https:/\/api-goerli.arbiscan.io";
-            case "base":
-                return "https:/\/api.basescan.org";
-            case "base-sepolia":
-                return "https:/\/api-sepolia.basescan.org";
             case "bnb":
                 return "https:/\/api.bscscan.com";
             case "bnbt":
                 return "https:/\/api-testnet.bscscan.com";
             case "matic":
                 return "https:/\/api.polygonscan.com";
-            case "matic-amoy":
-                return "https:/\/api-amoy.polygonscan.com";
             case "matic-mumbai":
                 return "https:/\/api-testnet.polygonscan.com";
             case "optimism":
@@ -22636,7 +22619,7 @@ class FallbackProvider extends AbstractProvider {
         }
         this.eventQuorum = 1;
         this.eventWorkers = 1;
-        assertArgument(this.quorum <= this.#configs.reduce((a, c) => (a + c.weight), 0), "quorum exceed provider weight", "quorum", this.quorum);
+        assertArgument(this.quorum <= this.#configs.reduce((a, c) => (a + c.weight), 0), "quorum exceed provider wieght", "quorum", this.quorum);
     }
     get providerConfigs() {
         return this.#configs.map((c) => {
@@ -24791,9 +24774,9 @@ class HDNodeWallet extends BaseWallet {
     /**
      *  The derivation path of this wallet.
      *
-     *  Since extended keys do not provide full path details, this
+     *  Since extended keys do not provider full path details, this
      *  may be ``null``, if instantiated from a source that does not
-     *  encode it.
+     *  enocde it.
      */
     path;
     /**
