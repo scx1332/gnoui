@@ -522,7 +522,7 @@ async function get_chain_id() {
 
     let uriParams = getUriParameters();
     if (uriParams.has('multisig') && uriParams.get('multisig').length === 42) {
-        localStorage.setItem(`multisig_${network}`, uriParams.get('multisig'));
+        localStorage.setItem(`multisig_${globals.network}`, uriParams.get('multisig'));
     }
 
 
