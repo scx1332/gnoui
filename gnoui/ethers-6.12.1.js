@@ -25431,7 +25431,7 @@ const wordlists = {
 /////////////////////////////
 //
 
-var ethers6121 = /*#__PURE__*/Object.freeze({
+var ethers = /*#__PURE__*/Object.freeze({
     __proto__: null,
     AbiCoder: AbiCoder,
     AbstractProvider: AbstractProvider,
