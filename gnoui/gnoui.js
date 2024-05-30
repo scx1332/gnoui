@@ -557,6 +557,14 @@ function addOwner() {
     });
 }
 
+function iterateAllGlobalSymbols() {
+    for (let key in window) {
+        if (window.hasOwnProperty(key)) {
+            console.log(`${typeof (window[key])} ${key}`);
+        }
+    }
+}
+
 async function sendCustomTransaction() {
     let destContract = document.getElementById('any-contract-address').value;
     let anyData = document.getElementById('any-contract-data').value;
