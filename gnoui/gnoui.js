@@ -63,7 +63,7 @@ function switchMultiSig() {
         document.getElementById('error-box').innerText = "Invalid address";
         return;
     }
-    localStorage.setItem(`multisig_${network}`, newAddress);
+    localStorage.setItem(`multisig_${globals.network}`, newAddress);
     window.location.reload();
 }
 window.switchMultiSig = switchMultiSig;
