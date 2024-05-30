@@ -198,7 +198,7 @@ function createDivWithAddress(address) {
     }
     return createDivWithClassAndContent(
         className,
-        `<a href="https://holesky.etherscan.io/address/${address}">${extra}-${address}</a>`,
+        `<a target="_blank" href="https://holesky.etherscan.io/address/${address}">${extra}-${address}</a>`,
         true
     );
 }
