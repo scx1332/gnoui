@@ -164,8 +164,17 @@ input::placeholder {
     font-family: monospace;
 }
 
+.function-signature-box {
+    font-family: monospace;
+    font-weight: bold;
+}
+.param-signature-box {
+    font-family: monospace;
+}
+.error-signature-box {
+    color: red;
 
-
+}
 
 
 

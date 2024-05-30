@@ -203,6 +203,20 @@ function createDivWithAddress(address) {
     );
 }
 
+function renderDetailsEntry(labelClass, labelText, valueClass, valueText) {
+    let entryDiv = document.createElement('div');
+    entryDiv.className = "address-box-entry";
+
+    entryDiv.appendChild(createDivWithClassAndContent(
+        `details-label ${labelClass}`,
+        labelText));
+    entryDiv.appendChild(createDivWithClassAndContent(
+        `details-value ${valueClass}`,
+        valueText
+    ));
+    return entryDiv;
+}
+
 
 /**
  * @param {[string]} owners
@@ -212,7 +226,7 @@ function renderOwnersEntry(owners, isConfirmed) {
     // verify if owners is string array
     if (!Array.isArray(owners) || !owners.every((v) => typeof v === "string")) {
         throw "Owners must be an array of strings";
-    };
+    }
     // verify if every string is an address
     if (!owners.every((v) => isAddress(v))) {
         throw "Every owner must be an address";
@@ -276,21 +290,21 @@ async function getTransactionDetails(contract, transactionId) {
     let newDiv = document.createElement('div');
     newDiv.className = "transaction-details";
 
+    let transactionStatus = executed ? "Executed" : "Pending";
     {
         let parentDiv = document.createElement('div');
         parentDiv.className = "address-box-entry";
 
         parentDiv.appendChild(createDivWithClassAndContent(
             "details-label transaction-details-header-label",
-            "Transaction ID:"));
+            "Transaction ID/status:"));
         parentDiv.appendChild(createDivWithClassAndContent(
             "details-value transaction-details-value",
-            `${transactionId}`,
+            `${transactionId} - ${transactionStatus}`,
             true
         ));
         newDiv.appendChild(parentDiv);
     }
-    let transactionStatus = executed ? "Executed" : "Pending";
 
     let ownersAlreadyConfirmed = [];
     let ownersNotConfirmed = [];
@@ -316,20 +330,6 @@ async function getTransactionDetails(contract, transactionId) {
     newDiv.appendChild(
         renderOwnersEntry(ownersNotConfirmed, false)
     );
-    {
-        let parentDiv = document.createElement('div');
-        parentDiv.className = "address-box-entry";
-
-        parentDiv.appendChild(createDivWithClassAndContent(
-            "details-label transaction-details-header-label",
-            "Transaction status:"));
-        parentDiv.appendChild(createDivWithClassAndContent(
-            "details-value transaction-details-value",
-            `${transactionStatus}`,
-            true
-        ));
-        newDiv.appendChild(parentDiv);
-    }
 
     let isContractCall = (bytes.length > 0);
 
@@ -380,42 +380,38 @@ async function getTransactionDetails(contract, transactionId) {
 
     if (func) {
         let fullFuncSig = func.name + "(";
-        for (let i = 0; i < func.inputs.length; i++) {
-            fullFuncSig += `${func.inputs[i].type},`;
+        for (let input of func.inputs) {
+            fullFuncSig += `${input.type},`;
         }
         fullFuncSig = fullFuncSig.slice(0, -1) + ")";
         {
-            {
-                let parentDiv = document.createElement('div');
-                parentDiv.className = "address-box-entry";
-
-                parentDiv.appendChild(createDivWithClassAndContent(
-                    "details-label address-box-label",
-                    "Function signature: "));
-                parentDiv.appendChild(createDivWithClassAndContent(
-                    "details-value address-box",
-                    `${fullFuncSig}`
-                ));
-                newDiv.appendChild(parentDiv);
-            }
+            newDiv.appendChild(renderDetailsEntry(
+                "function-signature-label",
+                "Function signature:",
+                "function-signature-box",
+                `${fullFuncSig}`
+            ));
         }
         // Print decoded values and their types
         if (decoded) {
             for (let i = 0; i < decoded.length; i++) {
-                let parentDiv = document.createElement('div');
-                parentDiv.className = "address-box-entry";
-
-                parentDiv.appendChild(createDivWithClassAndContent(
-                    "details-label address-box-label",
-                    `Param no ${i + 1}: `));
-                parentDiv.appendChild(createDivWithClassAndContent(
-                    "details-value param-data-box",
+                newDiv.appendChild(renderDetailsEntry(
+                    "param-signature-label",
+                    `Param no ${i + 1}:`,
+                    "param-signature-box",
                     `${decoded[i]}`
                 ));
-                newDiv.appendChild(parentDiv);
             }
         }
-
+    } else {
+        {
+            newDiv.appendChild(renderDetailsEntry(
+                "address-box-label",
+                "Function signature:",
+                "error-signature-box",
+                "CAUTION, No ABI decoded!"
+            ));
+        }
     }
 
     {
@@ -444,10 +440,6 @@ async function getTransactionDetails(contract, transactionId) {
     }
 
     document.getElementById('div-transaction-list').appendChild(newDiv);
-
-
-
-
 }
 
 async function confirmTransaction(transactionId) {
