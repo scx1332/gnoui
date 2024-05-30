@@ -25,7 +25,7 @@ function showNewContractOptions() {
     document.getElementById("new-contract-address-box").setAttribute("style", "display: block;");
     document.getElementById("switch-new-contract-address").setAttribute("disabled", "true");
 }
-function switchMutliSigCancel() {
+function switchMultiSigCancel() {
     document.getElementById("new-contract-address-box").setAttribute("style", "display: none;");
     document.getElementById("switch-new-contract-address").removeAttribute("disabled");
 }
@@ -79,14 +79,20 @@ async function setRequiredConfirmations() {
 
 }
 
-async function getOwners(contract) {
-    let owners = [];
-    let resp = await contract.getOwners();
-    for (let i = 0; i < resp.length; i++) {
-        owners.push(resp[i]);
-        document.getElementById('owners').innerHTML += `<li>${resp[i]} - <button onclick="removeOwner('${resp[i]}')">Remove</button> </li>`;
+function updateOwners() {
+    for (let i = 0; i < globals.owners.length; i++) {
+        let own = globals.owners[i];
+        document.getElementById('owners').innerHTML += `<li>${own} - <button onclick="removeOwner('${own}')">Remove</button> </li>`;
     }
-    return owners;
+}
+
+async function getOwners(contract) {
+    let resp = await contract.getOwners();
+    // verify if resp is array of addresses
+    if (!Array.isArray(resp) || !resp.every((v) => isAddress(v))) {
+        throw "Owners must be an array of strings";
+    }
+    return resp;
 }
 
 async function getTransactionsIds(contract, pending) {
@@ -158,6 +164,11 @@ async function downloadAbi(network, contractAddress) {
 }
 
 
+function createDivWithClass(className) {
+    let div = document.createElement('div');
+    div.className = className;
+    return div;
+}
 
 function createDivWithClassAndContent(className, content, isHTML = false) {
     let div = document.createElement('div');
@@ -177,31 +188,80 @@ function createDivWithAddress(address) {
         className += " address-box-owner";
         extra = "(Own)";
     }
-    if (address == globals.multiSigAddress) {
+    if (address.to === globals.multiSigAddress) {
         className += " address-box-multi-sig";
         extra = "(Mul)";
     }
-    if (address == connected) {
+    if (address === connected) {
         className += " address-box-connected";
         extra = "(Con)";
     }
-    let createdDiv = createDivWithClassAndContent(
+    return createDivWithClassAndContent(
         className,
         `<a href="https://holesky.etherscan.io/address/${address}">${extra}-${address}</a>`,
         true
     );
-    return createdDiv;
 }
 
+
+/**
+ * @param {[string]} owners
+ * @param {boolean} isConfirmed
+ */
+function renderOwnersEntry(owners, isConfirmed) {
+    // verify if owners is string array
+    if (!Array.isArray(owners) || !owners.every((v) => typeof v === "string")) {
+        throw "Owners must be an array of strings";
+    };
+    // verify if every string is an address
+    if (!owners.every((v) => isAddress(v))) {
+        throw "Every owner must be an address";
+    }
+    // verify if isConfirmed is boolean
+    if (typeof isConfirmed !== "boolean") {
+        throw "isConfirmed must be a boolean";
+    }
+
+    let entryDiv = document.createElement('div');
+    entryDiv.className = "address-box-entry";
+
+    entryDiv.appendChild(createDivWithClassAndContent(
+        `details-label transaction-details-header-label`,
+        isConfirmed ? "Confirmed by:" : "Not (yet) confirmed by:"));
+
+    let div = createDivWithClass('div', "details-value transaction-details-value");
+    for (let owner of owners) {
+        div.appendChild(createDivWithAddress(owner));
+    }
+    entryDiv.appendChild(div);
+    return entryDiv;
+}
 
 async function getTransactionDetails(contract, transactionId) {
     let resp = await contract.transactions(transactionId);
 
-    let targetAddr = resp[0];
-    let value = resp[1];
-    let data = resp[2];
-    //data from hex
-    let executed = resp[3];
+    if (typeof resp[0] !== "string" || !isAddress(resp[0])) {
+        throw "Invalid target address";
+    }
+    const targetAddr = getAddress(resp[0]);
+
+    if (typeof resp[1] !== "bigint") {
+        throw "Invalid value returned from contract";
+    }
+    const value = resp[1];
+
+    if (typeof resp[2] !== "string") {
+        throw "Invalid data";
+    }
+    if (!isHexString(resp[2], resp[2].length / 2 - 1)) {
+        throw "Data returned from contract is not a hex string";
+    }
+    const data = resp[2];
+
+    if (typeof resp[3] !== "boolean") {
+        throw "Invalid executed";
+    }
+    const executed = resp[3];
 
     console.log("Transaction details: " + targetAddr + " " + value + " " + data + " " + executed);
     if (!data.startsWith('0x')) {
@@ -232,11 +292,14 @@ async function getTransactionDetails(contract, transactionId) {
     }
     let transactionStatus = executed ? "Executed" : "Pending";
 
-
     let ownersAlreadyConfirmed = [];
     let ownersNotConfirmed = [];
 
     let confirmedOwners = await contract.getConfirmations(transactionId);
+    // check if confirmedOwners is bigint array
+    if (!confirmedOwners.every((v) => isAddress(v))) {
+        throw "Confirmed owners must be an array with valid addresses";
+    }
     for (let i = 0; i < globals.owners.length; i++) {
         let testOwner = globals.owners[i];
         if (confirmedOwners.includes(testOwner)) {
@@ -246,46 +309,13 @@ async function getTransactionDetails(contract, transactionId) {
         }
     }
 
-    {
-        let parentDiv = document.createElement('div');
-        parentDiv.className = "address-box-entry";
+    newDiv.appendChild(
+        renderOwnersEntry(ownersAlreadyConfirmed, true)
+    );
 
-        parentDiv.appendChild(createDivWithClassAndContent(
-            "details-label transaction-details-header-label",
-            "Confirmed by:"));
-
-        let children = [];
-        for (let i = 0; i < ownersAlreadyConfirmed.length; i++) {
-            children.push(createDivWithAddress(ownersAlreadyConfirmed[i]));
-        }
-        let childrenhtml = children.map((x) => x.outerHTML).join("");
-        parentDiv.appendChild(createDivWithClassAndContent(
-            "details-value transaction-details-value",
-            childrenhtml,
-            true
-        ));
-        newDiv.appendChild(parentDiv);
-    }
-    {
-        let parentDiv = document.createElement('div');
-        parentDiv.className = "address-box-entry";
-
-        parentDiv.appendChild(createDivWithClassAndContent(
-            "details-label transaction-details-header-label",
-            "Not (yet) confirmed by:"));
-
-        let children = [];
-        for (let i = 0; i < ownersNotConfirmed.length; i++) {
-            children.push(createDivWithAddress(ownersNotConfirmed[i]));
-        }
-        let childrenhtml = children.map((x) => x.outerHTML).join("");
-        parentDiv.appendChild(createDivWithClassAndContent(
-            "details-value transaction-details-value",
-            childrenhtml,
-            true
-        ));
-        newDiv.appendChild(parentDiv);
-    }
+    newDiv.appendChild(
+        renderOwnersEntry(ownersNotConfirmed, false)
+    );
     {
         let parentDiv = document.createElement('div');
         parentDiv.className = "address-box-entry";
@@ -468,6 +498,7 @@ async function get_chain_id() {
     const contract = new ethers.Contract(globals.multiSigAddress, gnosisAbi, new ethers.BrowserProvider(provider))
 
     globals.owners = await getOwners(contract);
+    updateOwners();
     updateConnected();
 
     await getTransactionsIds(contract, true);
@@ -478,10 +509,6 @@ function removeOwner(address) {
     let iface = new Interface(gnosisAbi);
     let calldata = iface.encodeFunctionData("removeOwner", [address]);
     let call = iface.encodeFunctionData("submitTransaction", [globals.multiSigAddress, 0, calldata]);
-    let params = {
-        to: globals.multiSigAddress,
-        data: calldata
-    };
     let gasLimit = 1000000;
     let gasLimitHex = gasLimit.toString(16);
     window.ethereum.request({
@@ -502,10 +529,6 @@ function addOwner() {
     let iface = new Interface(gnosisAbi);
     let calldata = iface.encodeFunctionData("addOwner", [address]);
     let call = iface.encodeFunctionData("submitTransaction", [globals.multiSigAddress, 0, calldata]);
-    let params = {
-        to: globals.multiSigAddress,
-        data: calldata
-    };
     let gasLimit = 1000000;
     let gasLimitHex = gasLimit.toString(16);
     window.ethereum.request({
@@ -621,12 +644,15 @@ function updateProvider(res) {
     connected = getAddress(res[0]);
 
     provider.on("chainChanged", (chainId) => {
+        console.error(`MetaMask chain changed ${chainId}`);
         window.location.reload()
     });
     provider.on("accountsChanged", (accounts) => {
+        console.error(`MetaMask accounts changed ${accounts}`);
         window.location.reload()
     });
     provider.on("disconnect", (error) => {
+        console.error(`MetaMask disconnected ${error}`);
         window.location.reload()
     });
 
