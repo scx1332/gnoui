@@ -100,10 +100,12 @@ textarea::placeholder {
 
 #page-content {
     min-width: 50em;
+    max-width: 70em;
+    margin: auto;
 }
 
 .metamask-connection-box {
-    border: 1px solid #ccc;
+    border-bottom: 2px solid #ccc;
     padding: 0.5em;
     display: flex;
 }
@@ -114,11 +116,10 @@ textarea::placeholder {
 }
 
 .transaction-details {
-    border: 2px solid #ccc;
+    border-bottom: 3px solid black;
     padding: 0.5em;
     margin-bottom: 2.0em;
     margin-top: 2em;
-    max-width: 50em;
 }
 #div-transaction-list {
     padding: 0.5em;
@@ -225,6 +226,7 @@ textarea::placeholder {
     color: black;
     cursor: not-allowed;
     border: 3px solid #4fc3f7;
+    cursor: auto;
 }
 /* Hover effects */
 .navigation button:enabled:hover {
@@ -235,8 +237,8 @@ textarea::placeholder {
 #nav-obj-ownership-management {
     padding: 1em;
     margin-left: 0.5em;
-    border: 2px solid #ccc;
-    margin-top: 2em;
+    border-bottom: 2px solid #ccc;
+    margin-top: 0em;
 }
 
 .owner-address-entry {

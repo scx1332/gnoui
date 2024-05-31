@@ -1,4 +1,4 @@
-import {parseEther, getAddress, formatEther, hexlify, Interface, Contract, BrowserProvider, formatUnits, parseUnits, isAddress, isHexString, AbiCoder} from "./ethers.js";
+import {parseEther, getAddress, formatEther, hexlify, Interface, Contract, BrowserProvider, ContractFactory, formatUnits, parseUnits, isAddress, isHexString, AbiCoder} from "./ethers.js";
 
 
 /**
@@ -165,18 +165,14 @@ function getMultiSigAddress(network) {
     let localStorageItem = localStorage.getItem(localStorageKey);
     if (localStorageItem) {
         return getAddress(localStorageItem.toLowerCase());
-    } else if (network === "holesky") {
-        //return "0x7D7222f0A7d95E43d9D960F5EF6F2E5d2A72aC59";
-        return "0x2E9cE37b4d0Ef9385AAf3f32DFE727c41fdcc8DD";
     }
+    return "0x0000000000000000000000000000000000000000";
 }
 
 async function downloadAbi(network, contractAddress) {
     let abiUrl;
-    if (network === "mainnet") {
-        abiUrl = `https://api.etherscan.io/api?module=contract&action=getabi&address=${contractAddress}`;
-    } else if (network === "holesky") {
-        abiUrl = `https://api-holesky.etherscan.io/api?module=contract&action=getabi&address=${contractAddress}`;
+    if (globals.etherscanApi) {
+        abiUrl = `${globals.etherscanApi}/api?module=contract&action=getabi&address=${contractAddress}`;
     } else {
         console.error(`Invalid network ${network}`);
         return;
@@ -241,7 +237,7 @@ function createDivWithAddress(address) {
     }
     return createDivWithClassAndContent(
         className,
-        `<a target="_blank" href="https://holesky.etherscan.io/address/${address}">${extra}-${address}</a>`,
+        `<a target="_blank" href="${globals.etherscan}/address/${address}">${extra}-${address}</a>`,
         true
     );
 }
@@ -512,11 +508,63 @@ async function get_chain_id() {
     console.log(chainId);
     if (parseInt(chainId) === 17000) {
         globals.network = "holesky";
+        globals.ethSymbol = "tETH";
+        globals.etherscan = "https://holesky.etherscan.io";
+        globals.etherscanApi = "https://api-holesky.etherscan.io";
         document.getElementById("connected-network").innerText = "Connected via MetaMask to Holesky testnet:";
     } else if (parseInt(chainId) === 1) {
         globals.network = "mainnet";
+        globals.ethSymbol = "ETH";
+        globals.etherscan = "https://etherscan.io";
+        globals.etherscanApi = "https://api.etherscan.io";
         document.getElementById("connected-network").innerText = "Connected via MetaMask to Ethereum Mainnet:";
-    } else {
+    } else if (parseInt(chainId) === 137) {
+        globals.network = "polygon";
+        globals.ethSymbol = "MATIC";
+        globals.etherscan = "https://polygonscan.com";
+        globals.etherscanApi = "https://api.polygonscan.com";
+        document.getElementById("connected-network").innerText = "Connected via MetaMask to Polygon (POS) network:";
+    }
+    else if (parseInt(chainId) === 11155111) {
+        globals.network = "sepolia";
+        globals.ethSymbol = "tETH";
+        globals.etherscan = "https://sepolia.etherscan.io";
+        globals.etherscanApi = "https://api-sepolia.etherscan.io";
+        document.getElementById("connected-network").innerText = "Connected via MetaMask to Sepolia testnet:";
+    }
+    else if (parseInt(chainId) === 80002) {
+        globals.network = "amoy";
+        globals.ethSymbol = "tETH";
+        globals.etherscan = "https://amoy.polygonscan.com";
+        globals.etherscanApi = "https://api-amoy.polygonscan.com";
+        document.getElementById("connected-network").innerText = "Connected via MetaMask to Polygon amoy testnet:";
+    }
+    else if (parseInt(chainId) === 8453) {
+        globals.network = "base";
+        globals.ethSymbol = "ETH";
+        globals.etherscan = "https://basescan.org";
+        globals.etherscanApi = "https://api.basescan.org";
+        document.getElementById("connected-network").innerText = "Connected via MetaMask to Base network:";
+    }
+    else if (parseInt(chainId) === 84532) {
+        globals.network = "base-sepolia";
+        globals.ethSymbol = "tETH";
+        globals.etherscan = "https://sepolia.basescan.org";
+        globals.etherscanApi = "https://api-sepolia.basescan.org";
+    }
+    else if (parseInt(chainId) === 56) {
+        globals.network = "binance";
+        globals.ethSymbol = "BNB";
+        globals.etherscan = "https://bscscan.com";
+        globals.etherscanApi = "https://api.bscscan.com";
+    }
+    else if (parseInt(chainId) === 42161) {
+        globals.network = "arbitrum";
+        globals.ethSymbol = "BNB";
+        globals.etherscan = "https://arbiscan.io";
+        globals.etherscanApi = "https://api.arbiscan.io";
+    }
+    else {
         document.getElementById('error-box').innerText = "Please switch to the correct network";
     }
 
@@ -530,23 +578,30 @@ async function get_chain_id() {
 
 
     document.getElementById("multisig-address").innerText = globals.multiSigAddress;
-    document.getElementById("multisig-address").href = "https://holesky.etherscan.io/address/" + globals.multiSigAddress;
+    document.getElementById("multisig-address").href = `${globals.etherscan}/address/` + globals.multiSigAddress;
 
-    const contract = new Contract(globals.multiSigAddress, gnosisAbi, new BrowserProvider(provider))
+    try {
+        const contract = new Contract(globals.multiSigAddress, gnosisAbi, new BrowserProvider(provider))
 
-    globals.owners = await getOwners(contract);
-    globals.requiredConfirmations = await contract.required();
-    document.getElementById("input-required-confirmations").value = globals.requiredConfirmations;
-    updateOwners();
-    updateConnected();
-    if (uriParams.has('nav')) {
-        localStorage.setItem("current-nav-item", uriParams.get('nav'));
+        globals.owners = await getOwners(contract);
+        globals.requiredConfirmations = await contract.required();
+        document.getElementById("input-required-confirmations").value = globals.requiredConfirmations;
+        updateOwners();
+        updateConnected();
+        if (uriParams.has('nav')) {
+            localStorage.setItem("current-nav-item", uriParams.get('nav'));
+        }
+        update_nav();
+        document.getElementById("page-content").setAttribute("style", "display: block;")
+
+        await getTransactionsIds(contract, true);
+        await getTransactionsIds(contract, false);
+    } catch (e) {
+        console.error(e);
+        document.getElementById('error-box').innerText = "Error fetching contract details";
+        document.getElementById("page-content").setAttribute("style", "display: block;")
     }
-    update_nav();
-    document.getElementById("page-content").setAttribute("style", "display: block;")
 
-    await getTransactionsIds(contract, true);
-    await getTransactionsIds(contract, false);
 }
 
 function removeOwner(address) {
@@ -835,3 +890,17 @@ window.nav_contr_config = nav_contr_config;
 window.nav_new_token_trans = nav_new_token_trans;
 window.nav_new_eth_trans = nav_new_eth_trans;
 window.nav_new_trans = nav_new_trans;
+
+
+async function deployNewContract() {
+    const factory = new ContractFactory(gnosisAbi, arrayify(gnosisCompiled));
+    const txDeploy = await factory.getDeployTransaction([connected], 1);
+
+    txDeploy.from = connected;
+    let tx = await window.ethereum.request({
+        method: "eth_sendTransaction",
+        params: [txDeploy],
+    });
+
+}
+window.deployNewContract = deployNewContract;

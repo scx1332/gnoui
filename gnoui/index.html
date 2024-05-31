@@ -6,6 +6,7 @@
     <script src="metamask-sdk.js"></script>
     <script src="gnosis-abi.js"></script>
     <script src="erc20-abi.js"></script>
+    <script src="MultiSigWallet_sol.js"></script>
     <script src="gnoui.js" type="module"></script>
     <script src="ethers.js" type="module"></script>
     <link rel="stylesheet" href="gnoui.css">
@@ -21,7 +22,7 @@
 
 <div id="page-content" style="display: none;">
     <div id="contract-owners">
-        <div style="border: 1px solid blue; padding: 1em;">
+        <div style="padding: 1em;">
             <div style="padding: 0.5em;margin-bottom: 1em;">
                 Current multi-signature contract address: <div class="address-box address-box-multi-sig"><a id="multisig-address" target="_blank"></a> <button id="switch-new-contract-address" onclick="showNewContractOptions()">Change</button> </div>
                 <div id="new-contract-address-box">
@@ -49,8 +50,8 @@
                         <div id="owners-list-ul"></div>
                     </div>
                 </div>
-                <div style="display: flex; flex-direction: row; margin-top: 1em;">
-                    <div style="min-width: 22.3em;">
+                <div style="display: flex; flex-direction: row; margin-top: 1em; padding-bottom: 1em; border-bottom: 2px solid #ccc">
+                    <div style="min-width: 22.3em; padding-top: 0.3em">
                         <input style="width: 100%;" type="text" id="new-owner-address"/>
                     </div>
                     <div>
@@ -59,7 +60,7 @@
                 </div>
                 <div style="display: flex; flex-direction: column">
                     <h3>Change required transactions</h3>
-                    <div style="display: flex; flex-direction: row; align-content: center;">
+                    <div style="display: flex; flex-direction: row; align-content: center; padding-bottom: 1em; border-bottom: 2px solid #ccc"">
                         <div>
                             <button id="set-required-confirmations-button" onclick="setRequiredConfirmations()">Set required confirmations</button>
                         </div>
@@ -68,6 +69,17 @@
                         </div>
                     </div>
                 </div>
+                <div style="display: flex; flex-direction: column">
+                    <h3>Deploy new contract</h3>
+                    <div style="display: flex; flex-direction: row; align-content: center;">
+                        <div>
+                            Deploy new contract:
+                            <button id="deploy-new-contract" onclick="deployNewContract()">Deploy</button>
+                        </div>
+
+                    </div>
+                </div>
+
             </div>
             <div id="nav-obj-new-eth-transaction" style="border: 1px solid blue; padding: 1em; display: flex; flex-direction: column;">
                 <h2>Operations</h2>
@@ -124,6 +136,11 @@
             </div>
         </div>
     </div>
+</div>
+<div style="width: 100%; background-color: #EEEEEE; height: 5em; padding: 0.3em; align-content: center;">
+    <div>Project repo <a href="https://github.com/scx1332/gnoui">gnoui</a> - created for Golem Network </div>
+    <div>Powered by metamask-sdk, <a href="https://docs.ethers.org/v6/">ethers.js v6</a> and vanilla.js</div>
+    <div>MultiSig repo: <a href="https://github.com/gnosis/MultiSigWallet">MultiSigWallet</a></div>
 </div>
 </body>
 </html>
