@@ -40,6 +40,7 @@ let globals = {
 
 // on load
 window.addEventListener('load', async () => {
+    update_nav();
     let res = await sdk.connect();
     updateProvider(res);
     //document.getElementById("connect-button").setAttribute("disabled", "true");
