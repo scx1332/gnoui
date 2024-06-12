@@ -486,8 +486,8 @@ async function getTransactionDetails(contract, transactionId) {
 async function confirmTransaction(transactionId) {
     let iface = new Interface(gnosisAbi);
     let call = iface.encodeFunctionData("confirmTransaction", [transactionId]);
-    let gasLimit = 1000000;
-    let gasLimitHex = gasLimit.toString(16);
+    let gasLimitHex = await estimateMultiSigMethod(new BrowserProvider(provider), call);
+
     window.ethereum.request({
         "method": "eth_sendTransaction",
         "params": [
@@ -605,12 +605,12 @@ async function get_chain_id() {
 
 }
 
-function removeOwner(address) {
+async function removeOwner(address) {
     let iface = new Interface(gnosisAbi);
     let calldata = iface.encodeFunctionData("removeOwner", [address]);
     let call = iface.encodeFunctionData("submitTransaction", [globals.multiSigAddress, 0, calldata]);
-    let gasLimit = 1000000;
-    let gasLimitHex = gasLimit.toString(16);
+    let gasLimitHex = await estimateMultiSigMethod(new BrowserProvider(provider), call);
+
     window.ethereum.request({
         "method": "eth_sendTransaction",
         "params": [
@@ -626,13 +626,13 @@ function removeOwner(address) {
 }
 window.removeOwner = removeOwner;
 
-function addOwner() {
+async function addOwner() {
     let address = document.getElementById('new-owner-address').value;
     let iface = new Interface(gnosisAbi);
     let calldata = iface.encodeFunctionData("addOwner", [address]);
     let call = iface.encodeFunctionData("submitTransaction", [globals.multiSigAddress, 0, calldata]);
-    let gasLimit = 1000000;
-    let gasLimitHex = gasLimit.toString(16);
+    let gasLimitHex = await estimateMultiSigMethod(new BrowserProvider(provider), call);
+
     window.ethereum.request({
         "method": "eth_sendTransaction",
         "params": [
@@ -668,12 +668,13 @@ async function sendCustomTransaction() {
     confirmStr += `function: ${func.name}(${func.inputs.map(input => input.type).join(",")}) \n`;
     confirmStr += `decoded: ${decoded}`;
 
+    let call = (new Interface(gnosisAbi)).encodeFunctionData(
+        "submitTransaction",
+        [destContract, bigAmount, bytes]);
+    let gasLimitHex = await estimateMultiSigMethod(new BrowserProvider(provider), call);
+
     if (confirm(confirmStr)) {
-        let gasLimit = 1000000;
-        let gasLimitHex = gasLimit.toString(16);
-        let call = (new Interface(gnosisAbi)).encodeFunctionData(
-            "submitTransaction",
-            [destContract, bigAmount, bytes]);
+
         window.ethereum.request({
             "method": "eth_sendTransaction",
             "params": [
@@ -712,15 +713,15 @@ async function sendErc20Token() {
     confirmStr += `${formatUnits(bigAmount, decimalPlaces)} ${tokenSymbol} (dec: ${bigAmount.toString()}, hex: ${bigAmountHex}) \n`;
     confirmStr += `to ${destinationAddress}`;
 
+    let iface = new Interface(gnosisAbi);
+    let erc20iface = new Interface(erc20abi);
+
+    let calldata = erc20iface.encodeFunctionData("transfer", [destinationAddress, bigAmount]);
+
+    let call = iface.encodeFunctionData("submitTransaction", [tokenAddress, 0, calldata]);
+    let gasLimitHex = await estimateMultiSigMethod(new BrowserProvider(provider), call);
 
     if (confirm(confirmStr)) {
-        let iface = new Interface(gnosisAbi);
-        let erc20iface = new Interface(erc20abi);
-
-        let calldata = erc20iface.encodeFunctionData("transfer", [destinationAddress, bigAmount]);
-        let gasLimit = 1000000;
-        let gasLimitHex = gasLimit.toString(16);
-        let call = iface.encodeFunctionData("submitTransaction", [tokenAddress, 0, calldata]);
         window.ethereum.request({
             "method": "eth_sendTransaction",
             "params": [
@@ -737,7 +738,24 @@ async function sendErc20Token() {
 }
 window.sendErc20Token = sendErc20Token;
 
-function sendGasTransfer() {
+
+async function estimateMultiSigMethod(prov, callData) {
+    let gasLimit = await prov.send(
+        'eth_estimateGas',
+        [{
+            "to": globals.multiSigAddress,
+            "from": connected,
+            "value": "0x0",
+            "data": callData,
+        }]
+    );
+    gasLimit = parseInt(gasLimit, 16) + 60000;
+    let gasLimitHex = gasLimit.toString(16);
+    return gasLimitHex;
+}
+
+
+async function sendGasTransfer() {
     let address = document.getElementById('gas-destination-address').value;
     let amount = document.getElementById('gas-transfer-value').value;
     let bigAmount = parseEther(amount);
@@ -748,11 +766,14 @@ function sendGasTransfer() {
     let confirmStr = "Are you sure you want to send \n";
     confirmStr += `${formatEther(bigAmount)} ETH (dec: ${bigAmount.toString()} wei, hex: ${bigAmountHex}) \n`;
     confirmStr += `to ${address}`;
+
+
+    let iface = new Interface(gnosisAbi);
+    let call = iface.encodeFunctionData("submitTransaction", [address, bigAmount, "0x"]);
+
+    let gasLimitHex = await estimateMultiSigMethod(new BrowserProvider(provider), call);
+
     if (confirm(confirmStr)) {
-        let iface = new Interface(gnosisAbi);
-        let gasLimit = 1000000;
-        let gasLimitHex = gasLimit.toString(16);
-        let call = iface.encodeFunctionData("submitTransaction", [address, bigAmount, "0x"]);
         window.ethereum.request({
             "method": "eth_sendTransaction",
             "params": [
