@@ -796,18 +796,42 @@ function updateConnected() {
     newDiv.id = "connected-address";
 }
 
+function connectedAccountChanged() {
+    let address = document.getElementById("connected-addresses").value;
+    localStorage.setItem("last-connected-address", address);
+    window.location.reload();
+}
+window.connectedAccountChanged = connectedAccountChanged;
+
 //**
 // * @param {Array.} res
 function updateProvider(res) {
-    if (res.length > 1) {
-        document.getElementById('error-box').innerText = "Only one connected account is allowed. Disconnect unused accounts in metamask and try again.";
-        console.error("Only one connected account is allowed");
+    let lastConnected = localStorage.getItem("last-connected-address");
+    let selectedIndex = 0;
+    if (res.length >= 1) {
+        document.getElementById("connected-addresses").innerHTML = "";
+        for (let i = 0; i < res.length; i++) {
+            let par = document.createElement("option");
+            par.value = res[i];
+            par.innerText = res[i];
+            if (lastConnected === res[i]) {
+                par.selected = true;
+                selectedIndex = i;
+            }
+            document.getElementById("connected-addresses").appendChild(par);
+        }
+        if (res.length > 1) {
+            document.getElementById("connected-addresses").setAttribute("style", "display: block;");
+        } else {
+            document.getElementById("connected-addresses").setAttribute("style", "display: none;");
+        }
+    } else {
         return;
     }
     provider = sdk.getProvider();
 
     // normalize address
-    connected = getAddress(res[0]);
+    connected = getAddress(res[selectedIndex]);
 
     provider.on("chainChanged", (chainId) => {
         console.error(`MetaMask chain changed ${chainId}`);
