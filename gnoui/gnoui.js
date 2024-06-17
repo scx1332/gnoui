@@ -2,6 +2,10 @@ import {parseEther, getAddress, formatEther, hexlify, Interface, Contract, Brows
 
 
 let verifiedTokens = {
+    "mainnet": ["0x7DD9c5Cba05E151C895FDe1CF355C9A1D5DA6429",  //GLM token
+        "0xdAC17F958D2ee523a2206206994597C13D831ec7", //USDT token
+        "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" //USDC token
+    ],
     "holesky": ["0x8888888815bf4DB87e57B609A50f938311EEd068"]
 }
 
