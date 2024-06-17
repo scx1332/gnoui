@@ -27,9 +27,7 @@
 </div>
 
 <div id="page-content" style="display: none;">
-    <div id="contract-owners">
-        <div style="padding: 1em;">
-            <div style="padding: 0.5em;margin-bottom: 1em;">
+            <div class="contract-owners-box">
                 Current multi-signature contract address: <div class="address-box address-box-multi-sig"><a id="multisig-address" target="_blank"></a> <button id="switch-new-contract-address" onclick="showNewContractOptions()">Change</button> </div>
                 <div id="new-contract-address-box">
                     Select your gnosis safe contract: <input type="text" id="new-contract-address"/>
@@ -44,7 +42,7 @@
                 <button id="nav-new-token-trans-btn" onclick="nav_new_token_trans()">New ERC20 <br/> transfer</button>
                 <button id="nav-new-trans-btn" onclick="nav_new_trans()">New contract <br/> call</button>
             </div>
-            <div id="nav-obj-transaction-list" style="border: 1px solid blue; padding: 1em;">
+            <div id="nav-obj-transaction-list">
                 <div id="div-transaction-list">
                 </div>
             </div>
@@ -141,7 +139,7 @@
 
             </div>
         </div>
-    </div>
+
 </div>
 <div style="width: 100%; background-color: #EEEEEE; height: 5em; padding: 1.3em 0.3em; align-content: center;">
     <div style="text-align: right; padding-right: 2em;"><a href="https://github.com/scx1332/gnoui">Project repository</a> - created for Golem Network </div>

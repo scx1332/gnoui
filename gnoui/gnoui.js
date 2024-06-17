@@ -523,7 +523,7 @@ async function getTransactionDetails(contract, transactionId) {
 
     {
         let parentDiv = document.createElement('div');
-        parentDiv.className = "address-box-entry";
+        parentDiv.className = "address-box-entry-last";
 
         parentDiv.appendChild(createDivWithClassAndContent(
             "details-label address-box-label",

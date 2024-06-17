@@ -99,8 +99,8 @@ textarea::placeholder {
 }
 
 #page-content {
-    min-width: 50em;
-    max-width: 70em;
+    min-width: 40em;
+    max-width: 40em;
     margin: auto;
 }
 
@@ -108,6 +108,9 @@ textarea::placeholder {
     border-bottom: 2px solid #ccc;
     padding: 0.5em;
     display: flex;
+    max-width: 40em;
+    margin: auto;
+    flex-direction: column;
 }
 .metamask-prompt {
     font-size: 1.1em;
@@ -116,13 +119,11 @@ textarea::placeholder {
 }
 
 .transaction-details {
-    border-bottom: 3px solid black;
+    border: 3px solid lightblue;
+    border-radius: 1em;
     padding: 0.5em;
     margin-bottom: 2.0em;
     margin-top: 2em;
-}
-#div-transaction-list {
-    padding: 0.5em;
 }
 
 .transaction-details div {
@@ -165,6 +166,12 @@ textarea::placeholder {
     border-bottom: 1px solid #ccc;
 }
 
+.address-box-entry-last {
+    display: flex;
+    justify-content: left;
+    align-items: center;
+    padding: 0.5em;
+}
 
 .details-label {
     min-width: 12em;
@@ -265,4 +272,12 @@ textarea::placeholder {
 }
 .address-box-unsafe a {
     color: red;
+}
+
+.contract-owners-box {
+    padding: 1em;
+    border: 3px solid lightblue;
+    border-radius: 1em;
+    margin-bottom: 1.0em;
+    margin-top: 1.5em;
 }
