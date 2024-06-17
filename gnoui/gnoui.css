@@ -98,23 +98,39 @@ textarea::placeholder {
     margin: 0.3em;
 }
 
-#page-content {
-    min-width: 40em;
-    max-width: 40em;
+#page-content-1 {
+    min-width: 38em;
+    max-width: 38em;
+    padding-right: 1em;
+    padding-left: 1em;
+    margin: auto;
+}
+#page-content-2 {
+    min-width: 38em;
+    max-width: 38em;
+    padding-right: 1em;
+    padding-left: 1em;
+    margin: auto;
+}
+#page-content-3 {
+    min-width: 38em;
+    max-width: 38em;
+    padding-right: 1em;
+    padding-left: 1em;
     margin: auto;
 }
 
 .metamask-connection-box {
-    border-bottom: 2px solid #ccc;
-    padding: 0.5em;
+    border: 3px solid lightblue;
+    border-radius: 1em;
+    padding: 0.5em 1em 1em 1em;
     display: flex;
     max-width: 40em;
     margin: auto;
     flex-direction: column;
 }
 .metamask-prompt {
-    font-size: 1.1em;
-    margin-right: 0.2em;
+    font-size: 1em;
     color: #333;
 }
 
@@ -210,8 +226,7 @@ textarea::placeholder {
 .navigation {
     display: flex;
     flex-direction: row;
-    justify-content: left;
-    padding: 0.5em;
+    padding: 0em;
 }
 
 /* Basic styles */
@@ -222,10 +237,10 @@ textarea::placeholder {
     display: block;
     text-decoration: none;
     border-radius: 5px;
-    margin-right: 2em;
     transition: background-color 0.3s, color 0.3s, transform 0.3s;
     width: 12em;
     height: 4em;
+    padding: 0.0em;
 }
 .navigation button:disabled {
     box-shadow: 0 0 5px 2px rgba(0, 95, 138, 0.5);
@@ -239,13 +254,6 @@ textarea::placeholder {
 .navigation button:enabled:hover {
     background-color: #cccccc;
     color: #888888;
-}
-
-#nav-obj-ownership-management {
-    padding: 1em;
-    margin-left: 0.5em;
-    border-bottom: 2px solid #ccc;
-    margin-top: 0em;
 }
 
 .owner-address-entry {
@@ -280,4 +288,19 @@ textarea::placeholder {
     border-radius: 1em;
     margin-bottom: 1.0em;
     margin-top: 1.5em;
+}
+.nav-obj-ownership-management {
+    padding: 1em;
+    border: 3px solid lightblue;
+    border-radius: 1em;
+    margin-bottom: 1.0em;
+    margin-top: 1.5em;
+}
+.settings-main-entry {
+    padding: 1em;
+    border: 3px solid lightblue;
+    border-radius: 1em;
+    margin-bottom: 1.0em;
+    margin-top: 1.5em;
+
 }

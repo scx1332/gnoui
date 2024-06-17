@@ -18,43 +18,50 @@
 <div id="metamask-not-connected-div">
     Metamask Extension is needed to use this page. Make sure that your browser supports it and it is installed and properly configured.
 </div>
-<div class="metamask-connection-box">
-    <div id="connected-network" class="metamask-prompt"></div>
-    <div id="connected-address" class="address-box"></div>
-    <select id="connected-addresses" onchange="connectedAccountChanged()" style="display: None;">
 
-    </select>
+<div id="page-content-1" style="display: none;">
+    <div class="metamask-connection-box">
+        <div id="connected-network" class="metamask-prompt"></div>
+        <div id="connected-address" class="address-box"></div>
+        <select id="connected-addresses" onchange="connectedAccountChanged()" style="display: None;">
+
+        </select>
+        <div style="padding-top: 1em; padding-bottom: 0em;">
+            Current multi-signature contract address: <div class="address-box address-box-multi-sig"><a id="multisig-address" target="_blank"></a> <button id="switch-new-contract-address" onclick="showNewContractOptions()">Change</button> </div>
+       </div>
+        <div id="new-contract-address-box">
+            Select your gnosis safe contract: <input type="text" id="new-contract-address"/>
+            <button id="switch-contract-button-ok" onclick="switchMultiSig()">Set contract</button>
+            <button id="switch-contract-button-cancel" onclick="switchMultiSigCancel()">Cancel</button>
+        </div>
+    </div>
 </div>
-
-<div id="page-content" style="display: none;">
-            <div class="contract-owners-box">
-                Current multi-signature contract address: <div class="address-box address-box-multi-sig"><a id="multisig-address" target="_blank"></a> <button id="switch-new-contract-address" onclick="showNewContractOptions()">Change</button> </div>
-                <div id="new-contract-address-box">
-                    Select your gnosis safe contract: <input type="text" id="new-contract-address"/>
-                    <button id="switch-contract-button-ok" onclick="switchMultiSig()">Set contract</button>
-                    <button id="switch-contract-button-cancel" onclick="switchMultiSigCancel()">Cancel</button>
-                </div>
-            </div>
-            <div class="navigation" style="display: flex; flex-direction: row;">
-                <button id="nav-trans-list-btn" disabled="true" onclick="nav_trans_list()">Transaction<br/>List</button>
-                <button id="nav-contr-config-btn" onclick="nav_contr_config()">Contract<br/>configuration</button>
-                <button id="nav-new-eth-trans-btn" onclick="nav_new_eth_trans()">New ETH <br/> transfer</button>
-                <button id="nav-new-token-trans-btn" onclick="nav_new_token_trans()">New ERC20 <br/> transfer</button>
-                <button id="nav-new-trans-btn" onclick="nav_new_trans()">New contract <br/> call</button>
-            </div>
-            <div id="nav-obj-transaction-list">
-                <div id="div-transaction-list">
-                </div>
-            </div>
-            <div id="nav-obj-ownership-management">
-                <h2>Ownership management</h2>
+<div style="background-color: #eee;padding: 1em 0em 1em 0em; margin-top: 0.5em;">
+    <div id="page-content-2" style="display: none;">
+        <div class="navigation" style="display: flex; flex-direction: row;">
+            <button id="nav-trans-list-btn" disabled="true" onclick="nav_trans_list()">Transaction<br/>List</button>
+            <button id="nav-contr-config-btn" onclick="nav_contr_config()">Contract<br/>configuration</button>
+            <button id="nav-new-eth-trans-btn" onclick="nav_new_eth_trans()">New ETH <br/> transfer</button>
+            <button id="nav-new-token-trans-btn" onclick="nav_new_token_trans()">New ERC20 <br/> transfer</button>
+            <button id="nav-new-trans-btn" onclick="nav_new_trans()">New contract <br/> call</button>
+        </div>
+    </div>
+</div>
+<div id="page-content-3" style="display: none;">
+    <div id="nav-obj-transaction-list">
+        <div id="div-transaction-list">
+        </div>
+    </div>
+    <div id="nav-obj-ownership-management">
+        <div>
+            <div class="settings-main-entry">
                 <div style="display: flex; flex-direction: column">
                     <div>
-                        <div style="margin-bottom: 0.5em; font-weight: bold;">Current owners:</div>
+                        <div style="margin-bottom: 0.5em; font-weight: bold;">Current MultiSig owners:</div>
                         <div id="owners-list-ul"></div>
                     </div>
                 </div>
-                <div style="display: flex; flex-direction: row; margin-top: 1em; padding-bottom: 1em; border-bottom: 2px solid #ccc">
+                <div style="display: flex; flex-direction: row; margin-top: 1em; padding-bottom: 1em">
                     <div style="min-width: 22.3em; padding-top: 0.3em">
                         <input style="width: 100%;" type="text" id="new-owner-address"/>
                     </div>
@@ -62,89 +69,90 @@
                         <button id="add-owner-button" onclick="addOwner()" style="margin-left: 0.5em">Add new owner</button>
                     </div>
                 </div>
-                <div style="display: flex; flex-direction: column">
-                    <h3>Change required transactions</h3>
-                    <div style="display: flex; flex-direction: row; align-content: center; padding-bottom: 1em; border-bottom: 2px solid #ccc"">
-                        <div>
-                            <button id="set-required-confirmations-button" onclick="setRequiredConfirmations()">Set required confirmations</button>
-                        </div>
-                        <div style="margin-left: 0.5em">
-                            <input id="input-required-confirmations" type="number" style="width: 3em; font-size: 1.3em"/>
-                        </div>
-                    </div>
-                </div>
-                <div style="display: flex; flex-direction: column">
-                    <h3>Deploy new contract</h3>
-                    <div style="display: flex; flex-direction: row; align-content: center;">
-                        <div>
-                            Deploy new contract:
-                            <button id="deploy-new-contract" onclick="deployNewContract()">Deploy</button>
-                        </div>
-
-                    </div>
-                </div>
-
             </div>
-            <div id="nav-obj-new-eth-transaction" style="border: 1px solid blue; padding: 1em; display: flex; flex-direction: column;">
-                <h2>Operations</h2>
-                <div>
-                    <h3>Send ETH (pure gas token) transfer</h3>
-                    <div style="margin: 0.2em;">
-                        Receiver (destination) address <input type="text" id="gas-destination-address" value="0xd8da6bf26964af9d7eed9e03e53415d37aa96045"/>
+            <div class="settings-main-entry" style="display: flex; flex-direction: column">
+                <div style="margin-bottom: 0.8em; font-weight: bold;">Change required transactions</div>
+                <div style="display: flex; flex-direction: row; align-content: center; padding-bottom: 1em">
+                    <div>
+                        <button id="set-required-confirmations-button" onclick="setRequiredConfirmations()">Set required confirmations</button>
                     </div>
-                    <div style="margin: 0.2em;">
-                        Value: <input type="text" id="gas-transfer-value" value="0.000000000001"/>
-                    </div>
-                    <div style="margin: 0.2em;">
-                        <button id="send-gas-button" onclick="sendGasTransfer()">Send transaction</button>
+                    <div style="margin-left: 0.5em">
+                        <input id="input-required-confirmations" type="number" style="width: 3em; font-size: 1.3em"/>
                     </div>
                 </div>
             </div>
-            <div id="nav-obj-new-token-transaction">
-                <div style="display: flex; flex-direction: column;">
-                    <h3>Send ERC20 token transfer</h3>
-                    <div style="margin: 0.2em;">
-                        Token address: <input type="text" id="token-address" value="0x8888888815bf4DB87e57B609A50f938311EEd068"/>
+            <div class="settings-main-entry" style="display: flex; flex-direction: column">
+                <div style="margin-bottom: 0.5em; font-weight: bold;">Deploy new contract</div>
+                <div style="display: flex; flex-direction: row; align-content: center;">
+                    <div>
+                        Deploy new contract:
+                        <button id="deploy-new-contract" onclick="deployNewContract()">Deploy</button>
                     </div>
-                    <div style="margin: 0.2em;">
-                        Receiver (destination) address: <input type="text" id="token-dest-address" value="0x23D57ac10a98e14f30068d06403e8f9D97657428"/>
-                    </div>
-                    <div style="margin: 0.2em;">
-                        Token amount: <input type="text" id="token-transfer-value" value="0.00001"/>
-                    </div>
-                    <div style="margin: 0.2em;">
-                        <button id="send-token-button" onclick="sendErc20Token()">Send token</button>
-                    </div>
-                </div>
-            </div>
-            <div id="nav-obj-new-transaction">
-                <div style="display: flex; flex-direction: column;">
-                    <h3>Send any transaction</h3>
-                    <div style="margin: 0.2em;">
-                        Contract address: <input type="text" id="any-contract-address" value="0x8888888815bf4DB87e57B609A50f938311EEd068"/>
-                    </div>
-                    <div style="margin: 0.2em;">
-                        Encoded data:
-                        <textarea id="any-contract-data"
-                            style="width: 100%;resize:none;font-size: 1.1em;"
-                            oninput='this.style.height = "";this.style.height = this.scrollHeight + 3 + "px"'>0xa9059cbb00000000000000000000000023d57ac10a98e14f30068d06403e8f9d976574280000000000000000000000000000000000000000000000000000000000002710</textarea>
-                    </div>
-                    <div style="margin: 0.2em;">
-                        Eth value: <input type="text" id="any-contract-value" value="0"/>
-                    </div>
-                    <div style="margin: 0.2em;">
-                        <button id="send-any-button" onclick="sendCustomTransaction()">Check values</button>
-                    </div>
-                </div>
 
+                </div>
             </div>
         </div>
 
+    </div>
+    <div id="nav-obj-new-eth-transaction" style="border: 1px solid blue; padding: 1em; display: flex; flex-direction: column;">
+        <div class="settings-main-entry" >
+            <div style="margin-bottom: 0.5em; font-weight: bold">Send ETH (pure gas token) transfer</div>
+            <div style="margin: 0.2em;">
+                Receiver (destination) address <input type="text" id="gas-destination-address" value="0xd8da6bf26964af9d7eed9e03e53415d37aa96045"/>
+            </div>
+            <div style="margin: 0.2em;">
+                Value: <input type="text" id="gas-transfer-value" value="0.000000000001"/>
+            </div>
+            <div style="padding-top: 0.5em;">
+                <button id="send-gas-button" onclick="sendGasTransfer()">Send transaction</button>
+            </div>
+        </div>
+    </div>
+    <div id="nav-obj-new-token-transaction">
+        <div class="settings-main-entry"  style="display: flex; flex-direction: column;">
+            <div style="margin-bottom: 0.5em; font-weight: bold">Send ERC20 token transfer</div>
+            <div style="margin: 0.2em;">
+                Token address: <input type="text" id="token-address" value="0x8888888815bf4DB87e57B609A50f938311EEd068"/>
+            </div>
+            <div style="margin: 0.2em;">
+                Receiver (destination) address: <input type="text" id="token-dest-address" value="0x23D57ac10a98e14f30068d06403e8f9D97657428"/>
+            </div>
+            <div style="margin: 0.2em;">
+                Token amount: <input type="text" id="token-transfer-value" value="0.00001"/>
+            </div>
+            <div style="padding-top: 0.5em;">
+                <button id="send-token-button" onclick="sendErc20Token()">Send token</button>
+            </div>
+        </div>
+    </div>
+    <div id="nav-obj-new-transaction">
+        <div class="settings-main-entry"  style="display: flex; flex-direction: column;">
+            <div style="margin-bottom: 0.5em; font-weight: bold">Send any transaction</div>
+            <div style="margin: 0.2em;">
+                Contract address: <input type="text" id="any-contract-address" value="0x8888888815bf4DB87e57B609A50f938311EEd068"/>
+            </div>
+            <div style="margin: 0.2em;">
+                Encoded data:
+                <textarea id="any-contract-data"
+                    style="width: 100%;resize:none;font-size: 1.1em;"
+                    oninput='this.style.height = "";this.style.height = this.scrollHeight + 3 + "px"'>0xa9059cbb00000000000000000000000023d57ac10a98e14f30068d06403e8f9d976574280000000000000000000000000000000000000000000000000000000000002710</textarea>
+            </div>
+            <div style="margin: 0.2em;">
+                Eth value: <input type="text" id="any-contract-value" value="0"/>
+            </div>
+            <div style="padding-top: 0.5em;">
+                <button id="send-any-button" onclick="sendCustomTransaction()">Check values</button>
+            </div>
+        </div>
+
+    </div>
 </div>
 <div style="width: 100%; background-color: #EEEEEE; height: 5em; padding: 1.3em 0.3em; align-content: center;">
-    <div style="text-align: right; padding-right: 2em;"><a href="https://github.com/scx1332/gnoui">Project repository</a> - created for Golem Network </div>
-    <div style="text-align: right; padding-right: 2em;">Powered by MetaMask, <a href="https://docs.ethers.org/v6/">ethers.js</a> and vanilla.js</div>
-    <div style="text-align: right; padding-right: 2em;">Contract from MultiSig repo: <a href="https://github.com/gnosis/MultiSigWallet">MultiSigWallet</a></div>
+    <div style="width: 40em;margin: auto;">
+        <div style="text-align: right; padding-right: 1em;"><a href="https://github.com/scx1332/gnoui">Project repository</a> - created for Golem Network </div>
+        <div style="text-align: right; padding-right: 1em;">Powered by MetaMask, <a href="https://docs.ethers.org/v6/">ethers.js</a> and vanilla.js</div>
+        <div style="text-align: right; padding-right: 1em;">Contract from MultiSig repo: <a href="https://github.com/gnosis/MultiSigWallet">MultiSigWallet</a></div>
+    </div>
 </div>
 </body>
 </html>

@@ -660,14 +660,18 @@ async function get_chain_id() {
             localStorage.setItem("current-nav-item", uriParams.get('nav'));
         }
         update_nav();
-        document.getElementById("page-content").setAttribute("style", "display: block;")
+        document.getElementById("page-content-1").setAttribute("style", "display: block;")
+        document.getElementById("page-content-2").setAttribute("style", "display: block;")
+        document.getElementById("page-content-3").setAttribute("style", "display: block;")
 
         await getTransactionsIds(contract, true);
         await getTransactionsIds(contract, false);
     } catch (e) {
         console.error(e);
         document.getElementById('error-box').innerText = "Error fetching contract details";
-        document.getElementById("page-content").setAttribute("style", "display: block;")
+        document.getElementById("page-content-1").setAttribute("style", "display: block;")
+        document.getElementById("page-content-2").setAttribute("style", "display: block;")
+        document.getElementById("page-content-3").setAttribute("style", "display: block;")
     }
 
 }
