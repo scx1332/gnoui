@@ -507,6 +507,7 @@ window.confirmTransaction = confirmTransaction;
 async function get_chain_id() {
     let chainId = await provider.request({ method: 'eth_chainId' });
     console.log(chainId);
+    document.getElementById("metamask-not-connected-div").setAttribute("style", "display: none;")
     if (parseInt(chainId) === 17000) {
         globals.network = "holesky";
         globals.ethSymbol = "tETH";

@@ -256,3 +256,8 @@ textarea::placeholder {
 .transaction-details-header-label {
     font-weight: bold;
 }
+
+#metamask-not-connected-div {
+    padding: 1em;
+    color: darkred;
+}
