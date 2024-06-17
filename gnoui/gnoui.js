@@ -1,6 +1,10 @@
 import {parseEther, getAddress, formatEther, hexlify, Interface, Contract, BrowserProvider, ContractFactory, formatUnits, parseUnits, isAddress, isHexString, AbiCoder} from "./ethers.js";
 
 
+let verifiedTokens = {
+    "holesky": ["0x8888888815bf4DB87e57B609A50f938311EEd068"]
+}
+
 /**
  * This should be in library, I couldn't find it in ethers.js, so I have to write my own
  * @param {string} hexString
@@ -221,16 +225,34 @@ function createDivWithClassAndContent(className, content, isHTML = false) {
     return div;
 }
 
-function createDivWithAddress(address) {
+function createDivWithAddress(address, needSafe=false) {
     let className = "address-box";
     let extra = "(Ext)";
+
+
     if (globals.owners.includes(address)) {
         className += " address-box-owner";
         extra = "(Own)";
     }
-    if (address.to === globals.multiSigAddress) {
+    if (address === globals.multiSigAddress) {
         className += " address-box-multi-sig";
         extra = "(Mul)";
+    } else {
+        if (needSafe) {
+            let isContractVerified = false;
+            if (globals.network in verifiedTokens) {
+                if (verifiedTokens[globals.network].includes(address)) {
+                    isContractVerified = true;
+                }
+            }
+            if (isContractVerified && needSafe) {
+                className += " address-box-verified";
+                extra = "(Safe)";
+            } else {
+                className += " address-box-unsafe";
+                extra = "(!Unsafe!)";
+            }
+        }
     }
     if (address === connected) {
         className += " address-box-connected";
@@ -298,6 +320,13 @@ async function getTransactionDetails(contract, transactionId) {
         throw "Invalid target address";
     }
     const targetAddr = getAddress(resp[0]);
+
+    let isContractVerified = false;
+    if (globals.network in verifiedTokens) {
+        if (verifiedTokens[globals.network].includes(targetAddr)) {
+            isContractVerified = true;
+        }
+    }
 
     if (typeof resp[1] !== "bigint") {
         throw "Invalid value returned from contract";
@@ -399,10 +428,24 @@ async function getTransactionDetails(contract, transactionId) {
         let parentDiv = document.createElement('div');
         parentDiv.className = "address-box-entry";
 
-        parentDiv.appendChild(createDivWithClassAndContent(
-            "details-label address-box-label",
-            "Contract called: "));
-        parentDiv.appendChild(createDivWithAddress(targetAddr));
+        if (isContractCall) {
+            if (executed) {
+                parentDiv.appendChild(createDivWithClassAndContent(
+                    "details-label address-box-label",
+                    "Contract called: "));
+            } else {
+                parentDiv.appendChild(createDivWithClassAndContent(
+                    "details-label address-box-label",
+                    "Contract to call: "));
+            }
+
+            parentDiv.appendChild(createDivWithAddress(targetAddr, true));
+        } else {
+            parentDiv.appendChild(createDivWithClassAndContent(
+                "details-label address-box-label",
+                "Target address: "));
+            parentDiv.appendChild(createDivWithAddress(targetAddr));
+        }
 
         newDiv.appendChild(parentDiv);
     }
@@ -410,16 +453,22 @@ async function getTransactionDetails(contract, transactionId) {
         let parentDiv = document.createElement('div');
         parentDiv.className = "address-box-entry";
 
-        parentDiv.appendChild(createDivWithClassAndContent(
-            "details-label address-box-label",
-            "Gas (ETH) transferred: "));
+        if (executed) {
+            parentDiv.appendChild(createDivWithClassAndContent(
+                "details-label address-box-label",
+                "Gas (ETH) transferred: "));
+        } else {
+            parentDiv.appendChild(createDivWithClassAndContent(
+                "details-label address-box-label",
+                "Gas (ETH) to transfer: "));
+        }
         parentDiv.appendChild(createDivWithClassAndContent(
             "details-value ether-amount-box",
             `${formatEther(value)} (${value} wei)`
         ));
         newDiv.appendChild(parentDiv);
     }
-    if (data === "0x") {
+    if (!isContractCall) {
         newDiv.appendChild(renderDetailsEntry(
             "function-signature-label",
             "Function signature:",
@@ -429,6 +478,19 @@ async function getTransactionDetails(contract, transactionId) {
 
     } else if (func && decoded != null) {
         let fullFuncSig = func.name + "(" + func.inputs.map(input => input.type).join(",") + ")";
+        if (fullFuncSig == "transfer(address,uint256)") {
+            let contract = new Contract(targetAddr, erc20abi, new BrowserProvider(provider));
+
+            let decimalPlaces = await contract.decimals();
+            let tokenName = await contract.name();
+            let tokenSymbol = await contract.symbol();
+            newDiv.appendChild(renderDetailsEntry(
+                "function-signature-label",
+                "ERC20 transfer:",
+                "function-signature-box",
+                `Token: ${tokenName} (${tokenSymbol})\nFrom ${globals.multiSigAddress} \nTo: ${decoded[0]} \nAmount: ${formatUnits(decoded[1], decimalPlaces)} ${tokenSymbol}`
+            ));
+        }
         newDiv.appendChild(renderDetailsEntry(
             "function-signature-label",
             "Function signature:",

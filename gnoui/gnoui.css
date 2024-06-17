@@ -261,3 +261,8 @@ textarea::placeholder {
     padding: 1em;
     color: darkred;
 }
+.address-box-unsafe {
+}
+.address-box-unsafe a {
+    color: red;
+}
