@@ -128,6 +128,7 @@ textarea::placeholder {
     max-width: 40em;
     margin: auto;
     flex-direction: column;
+    position: relative;
 }
 .metamask-prompt {
     font-size: 1em;

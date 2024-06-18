@@ -1006,10 +1006,19 @@ function nav_new_trans() {
     update_nav();
 }
 
+function clearAllSettings() {
+    if (confirm("Are you sure you want to clear all settings including metamask connection info?")) {
+        localStorage.clear();
+        window.location.reload();
+    }
+}
+
+window.clearAllSettings = clearAllSettings;
+
 function useDeployedContract() {
     let contract = document.getElementById("input-deploy-last-contract-address").getAttribute("value");
     localStorage.setItem(`multisig_${globals.network}`, contract);
-    window.location.reload();
+    window.location = getBaseAddress(window.location.href);
 }
 
 window.useDeployedContract = useDeployedContract;
@@ -1021,6 +1030,17 @@ window.nav_new_token_trans = nav_new_token_trans;
 window.nav_new_eth_trans = nav_new_eth_trans;
 window.nav_new_trans = nav_new_trans;
 
+function getBaseAddress(uri) {
+    let url = new URL(uri);
+    return `${url.protocol}//${url.hostname}${url.port ? `:${url.port}` : ''}`;
+}
+
+function saveAddressToClipboard() {
+    let address = document.getElementById("multisig-address").innerText;
+    navigator.clipboard.writeText(getBaseAddress(window.location.href) + "?multisig=" + address);
+    alert("Address copied to clipboard");
+}
+window.saveAddressToClipboard = saveAddressToClipboard;
 
 async function deployNewContract() {
     const factory = new ContractFactory(gnosisAbi, arrayify(gnosisCompiled));
