@@ -304,3 +304,11 @@ textarea::placeholder {
     margin-top: 1.5em;
 
 }
+#div-no-transaction-list {
+    padding: 1em;
+    border: 3px solid lightblue;
+    border-radius: 1em;
+    margin-bottom: 1.0em;
+    margin-top: 1.5em;
+
+}

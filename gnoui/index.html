@@ -36,19 +36,24 @@
         </div>
     </div>
 </div>
-<div style="background-color: #eee;padding: 1em 0em 1em 0em; margin-top: 0.5em;">
+<div style="background-color: #eee;margin-top: 0.5em;">
     <div id="page-content-2" style="display: none;">
-        <div class="navigation" style="display: flex; flex-direction: row;">
-            <button id="nav-trans-list-btn" disabled="true" onclick="nav_trans_list()">Transaction<br/>List</button>
-            <button id="nav-contr-config-btn" onclick="nav_contr_config()">Contract<br/>configuration</button>
-            <button id="nav-new-eth-trans-btn" onclick="nav_new_eth_trans()">New ETH <br/> transfer</button>
-            <button id="nav-new-token-trans-btn" onclick="nav_new_token_trans()">New ERC20 <br/> transfer</button>
-            <button id="nav-new-trans-btn" onclick="nav_new_trans()">New contract <br/> call</button>
+        <div style="background-color: #eee;padding: 1em 0em 1em 0em; margin-top: 0.5em;">
+            <div class="navigation" style="display: flex; flex-direction: row;">
+                <button id="nav-trans-list-btn" disabled="true" onclick="nav_trans_list()">Transaction<br/>List</button>
+                <button id="nav-contr-config-btn" onclick="nav_contr_config()">Contract<br/>configuration</button>
+                <button id="nav-new-eth-trans-btn" onclick="nav_new_eth_trans()">New ETH<br/>transfer</button>
+                <button id="nav-new-token-trans-btn" onclick="nav_new_token_trans()">New ERC20<br/>transfer</button>
+                <button id="nav-new-trans-btn" onclick="nav_new_trans()">New contract<br/>call</button>
+            </div>
         </div>
     </div>
 </div>
 <div id="page-content-3" style="display: none;">
     <div id="nav-obj-transaction-list">
+        <div id="div-no-transaction-list">
+            No transactions found.
+        </div>
         <div id="div-transaction-list">
         </div>
     </div>
@@ -87,6 +92,9 @@
                     <div>
                         Deploy new contract:
                         <button id="deploy-new-contract" onclick="deployNewContract()">Deploy</button>
+                        <div id="div-deploy-progress"></div>
+                        <input id="input-deploy-last-contract-address" type="hidden">
+                        <button id="button-set-deployed-contract" style="display: none" onclick="useDeployedContract()">Use deployed contract</button>
                     </div>
 
                 </div>

@@ -157,6 +157,10 @@ async function getTransactionsIds(contract, pending) {
         let firstIdx = Math.max(transCount - lastTransactionCount, 0);
         resp = await contract.getTransactionIds(firstIdx, transCount, true, true);
         let reversed = resp.toArray().reverse();
+        if (reversed.length == 0) {
+            document.getElementById("div-no-transaction-list").setAttribute("style", "display: block;");
+            document.getElementById("div-no-transaction-list").innerText = "Contract does not have any transactions registered yet";
+        }
         for (let el of reversed) {
             console.log("Pending transaction: " + el);
             try {
@@ -546,6 +550,7 @@ async function getTransactionDetails(contract, transactionId) {
         newDiv.appendChild(parentDiv);
     }
 
+    document.getElementById("div-no-transaction-list").setAttribute("style", "display: none;");
     document.getElementById('div-transaction-list').appendChild(newDiv);
 }
 
@@ -1001,6 +1006,14 @@ function nav_new_trans() {
     update_nav();
 }
 
+function useDeployedContract() {
+    let contract = document.getElementById("input-deploy-last-contract-address").getAttribute("value");
+    localStorage.setItem(`multisig_${globals.network}`, contract);
+    window.location.reload();
+}
+
+window.useDeployedContract = useDeployedContract;
+
 
 window.nav_trans_list = nav_trans_list;
 window.nav_contr_config = nav_contr_config;
@@ -1014,10 +1027,21 @@ async function deployNewContract() {
     const txDeploy = await factory.getDeployTransaction([connected], 1);
 
     txDeploy.from = connected;
+
     let tx = await window.ethereum.request({
         method: "eth_sendTransaction",
         params: [txDeploy],
     });
+    document.getElementById("div-deploy-progress").innerText = `Deploying contract, tx: ${tx} ...`;
+
+    console.log(`Tx data: ${tx}`);
+
+    let receipt = await (new BrowserProvider(provider)).waitForTransaction(tx);
+    let contractAddress = receipt.contractAddress;
+    console.log(`Contract deployed at ${contractAddress}`);
+    document.getElementById("div-deploy-progress").innerText = `Contract deployed at ${contractAddress}`;
+    document.getElementById("input-deploy-last-contract-address").setAttribute("value", contractAddress);
+    document.getElementById("button-set-deployed-contract").setAttribute("style", "display: block;");
 
 }
 window.deployNewContract = deployNewContract;
