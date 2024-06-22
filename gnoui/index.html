@@ -26,6 +26,9 @@
         <div style="position: absolute; right: 10px;">
             <button id="copy-multisig-link2" onclick="window.location.reload()">Reload</button>
             <button id="button-clear-all" onclick="clearAllSettings()">Clear All</button>
+            <button id="button-admin-view" onclick="enableAdminView()">Enable admin view</button>
+            <button id="button-simple-view" onclick="enableSimpleView()">Enable simple view</button>
+
         </div>
         <select id="connected-addresses" onchange="connectedAccountChanged()" style="display: None;">
 
@@ -45,25 +48,34 @@
         </div>
     </div>
 </div>
-<div id="nav-band-1" style="background-color: #eee;margin-top: 0.5em;">
+<div id="nav-band-1" style="background-color: #eee;margin-top: 1.0em;">
     <div id="page-content-2" style="display: none;">
-        <div style="padding: 1em 0em 1em 0em; margin-top: 0.5em; background: transparent;">
-            <div class="navigation" style="display: flex; flex-direction: row;">
-                <button id="nav-trans-list-btn" disabled="true" onclick="nav_trans_list()">Transaction<br/>List</button>
-                <button id="nav-contr-config-btn" onclick="nav_contr_config()">Contract<br/>configuration</button>
-                <button id="nav-new-eth-trans-btn" onclick="nav_new_eth_trans()">New ETH<br/>transfer</button>
-                <button id="nav-new-token-trans-btn" onclick="nav_new_token_trans()">New ERC20<br/>transfer</button>
-                <button id="nav-new-trans-btn" onclick="nav_new_trans()">New contract<br/>call</button>
-            </div>
+        <div class="navigation">
+            <ul class="nav-menu">
+                <li id="nav-trans-pending-list-btn" disabled="true"><a href="#" onclick="nav_to('list-pending')">Pending<br/>txs</a></li>
+                <li id="nav-trans-history-list-btn"><a href="#" onclick="nav_to('list-history')">Executed<br/>txs</a></li>
+                <li id="nav-new-eth-trans-btn"><a href="#" onclick="nav_to('eth')">New ETH<br/>transfer</a></li>
+                <li id="nav-new-token-trans-btn"><a href="#" onclick="nav_to('token')">New<br/>ERC20</a></li>
+                <li id="nav-new-trans-btn"><a href="#" onclick="nav_to('trans')">New<br/>call</a></li>
+                <li id="nav-contr-config-btn"><a href="#" onclick="nav_to('config')">Contract<br/>config</a></li>
+            </ul>
         </div>
     </div>
 </div>
 <div id="page-content-3" style="display: none;">
-    <div id="nav-obj-transaction-list">
-        <div id="div-no-transaction-list">
+    <div id="nav-obj-transaction-pending-list">
+        <div id="div-no-transaction-pending-list" class="settings-main-entry">
             No transactions found.
         </div>
-        <div id="div-transaction-list">
+        <div id="div-transaction-pending-list">
+        </div>
+    </div>
+
+    <div id="nav-obj-transaction-history-list">
+        <div id="div-no-transaction-history-list" class="settings-main-entry">
+            No transactions found.
+        </div>
+        <div id="div-transaction-history-list">
         </div>
     </div>
     <div id="nav-obj-ownership-management">
@@ -164,9 +176,8 @@
 
     </div>
 </div>
-<div style="width: 100%; background-color: #EEEEEE; height: 5em; padding: 1.3em 0.3em; align-content: center;">
+<div id="div-footer" style="width: 100%; background-color: #EEEEEE; height: 5em; padding: 1.3em 0.3em; align-content: center;">
     <div style="width: 40em;margin: auto;">
-        <div style="text-align: right; padding-right: 1em;"><a href="https://github.com/scx1332/gnoui">Project repository</a> - created for Golem Network </div>
         <div style="text-align: right; padding-right: 1em;">Powered by MetaMask, <a href="https://docs.ethers.org/v6/">ethers.js</a> and vanilla.js</div>
         <div style="text-align: right; padding-right: 1em;">Contract from MultiSig repo: <a href="https://github.com/gnosis/MultiSigWallet">MultiSigWallet</a></div>
     </div>

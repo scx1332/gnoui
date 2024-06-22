@@ -43,13 +43,28 @@ let connected;
 let globals = {
     network: "unknown",
     multiSigAddress: null,
-    owners: []
+    owners: [],
+    isAdmin: false,
 }
 
 // on load
 window.addEventListener('load', async () => {
     update_nav();
     let res = await sdk.connect();
+
+    globals.isAdmin = localStorage.getItem("admin-view") === "true";
+
+    if (globals.isAdmin) {
+        document.getElementById("button-admin-view").setAttribute("style", "display: none;");
+        document.getElementById("button-simple-view").setAttribute("style", "display: block;");
+    } else {
+        document.getElementById("button-admin-view").setAttribute("style", "display: block;");
+        document.getElementById("button-simple-view").setAttribute("style", "display: none;");
+        document.getElementById("div-footer").setAttribute("style", "display: none;");
+        document.getElementById("nav-contr-config-btn").setAttribute("style", "display: none;");
+        document.getElementById("nav-new-trans-btn").setAttribute("style", "display: none;");
+        document.getElementById("nav-new-token-trans-btn").setAttribute("style", "display: none;");
+    }
     updateProvider(res);
     //document.getElementById("connect-button").setAttribute("disabled", "true");
 });
@@ -158,8 +173,8 @@ async function getTransactionsIds(contract, pending) {
         resp = await contract.getTransactionIds(firstIdx, transCount, true, true);
         let reversed = resp.toArray().reverse();
         if (reversed.length == 0) {
-            document.getElementById("div-no-transaction-list").setAttribute("style", "display: block;");
-            document.getElementById("div-no-transaction-list").innerText = "Contract does not have any transactions registered yet";
+            document.getElementById("div-no-transaction-history-list").setAttribute("style", "display: block;");
+            document.getElementById("div-no-transaction-history-list").innerText = "Contract does not have any transactions registered yet";
         }
         for (let el of reversed) {
             console.log("Pending transaction: " + el);
@@ -549,9 +564,13 @@ async function getTransactionDetails(contract, transactionId) {
             `<button id="confirm-transaction-no-${transactionId}" onclick="confirmTransaction(${transactionId})">Confirm transaction ${transactionId}</button>`, true));
         newDiv.appendChild(parentDiv);
     }
-
-    document.getElementById("div-no-transaction-list").setAttribute("style", "display: none;");
-    document.getElementById('div-transaction-list').appendChild(newDiv);
+    if (!executed) {
+        document.getElementById("div-no-transaction-pending-list").setAttribute("style", "display: none;");
+        document.getElementById('div-transaction-pending-list').appendChild(newDiv);
+    } else {
+        document.getElementById("div-no-transaction-history-list").setAttribute("style", "display: none;");
+        document.getElementById('div-transaction-history-list').appendChild(newDiv);
+    }
 }
 
 async function confirmTransaction(transactionId) {
@@ -931,36 +950,48 @@ function updateProvider(res) {
 }
 
 function set_selected_nav(navItem) {
-    document.getElementById("nav-trans-list-btn").removeAttribute("disabled");
-    document.getElementById("nav-contr-config-btn").removeAttribute("disabled");
-    document.getElementById("nav-new-trans-btn").removeAttribute("disabled");
-    document.getElementById("nav-new-token-trans-btn").removeAttribute("disabled");
-    document.getElementById("nav-new-eth-trans-btn").removeAttribute("disabled");
+    document.getElementById("nav-trans-pending-list-btn").removeAttribute("class");
+    document.getElementById("nav-trans-history-list-btn").removeAttribute("class");
+    document.getElementById("nav-contr-config-btn").removeAttribute("class");
+    document.getElementById("nav-new-trans-btn").removeAttribute("class");
+    document.getElementById("nav-new-token-trans-btn").removeAttribute("class");
+    document.getElementById("nav-new-eth-trans-btn").removeAttribute("class");
 
     document.getElementById("nav-obj-new-transaction").setAttribute("style", "display: none;");
     document.getElementById("nav-obj-new-eth-transaction").setAttribute("style", "display: none;");
     document.getElementById("nav-obj-new-token-transaction").setAttribute("style", "display: none;");
     document.getElementById("nav-obj-ownership-management").setAttribute("style", "display: none;");
-    document.getElementById("nav-obj-transaction-list").setAttribute("style", "display: none;");
+    document.getElementById("nav-obj-transaction-pending-list").setAttribute("style", "display: none;");
+    document.getElementById("nav-obj-transaction-history-list").setAttribute("style", "display: none;");
 
-    if (navItem == "list") {
-        document.getElementById("nav-trans-list-btn").setAttribute("disabled", "true");
-        document.getElementById("nav-obj-transaction-list").setAttribute("style", "display: block;");
+    if (!globals.isAdmin && (navItem == "config" || navItem == "token" || navItem == "trans")) {
+        nav_to("list-pending");
+        return;
+    }
+
+
+    if (navItem == "list-pending") {
+        document.getElementById("nav-trans-pending-list-btn").setAttribute("class", "nav-selected");
+        document.getElementById("nav-obj-transaction-pending-list").setAttribute("style", "display: block;");
+    } else if (navItem == "list-history") {
+        document.getElementById("nav-trans-history-list-btn").setAttribute("class", "nav-selected");
+        document.getElementById("nav-obj-transaction-history-list").setAttribute("style", "display: block;");
     } else if (navItem == "config") {
-        document.getElementById("nav-contr-config-btn").setAttribute("disabled", "true");
+        document.getElementById("nav-contr-config-btn").setAttribute("class", "nav-selected");
         document.getElementById("nav-obj-ownership-management").setAttribute("style", "display: block;");
     } else if (navItem == "trans") {
-        document.getElementById("nav-new-trans-btn").setAttribute("disabled", "true");
+        document.getElementById("nav-new-trans-btn").setAttribute("class", "nav-selected");
         document.getElementById("nav-obj-new-transaction").setAttribute("style", "display: block;");
     } else if (navItem == "token") {
-        document.getElementById("nav-new-token-trans-btn").setAttribute("disabled", "true");
+        document.getElementById("nav-new-token-trans-btn").setAttribute("class", "nav-selected");
         document.getElementById("nav-obj-new-token-transaction").setAttribute("style", "display: block;");
     } else if (navItem == "eth") {
-        document.getElementById("nav-new-eth-trans-btn").setAttribute("disabled", "true");
+        document.getElementById("nav-new-eth-trans-btn").setAttribute("class", "nav-selected");
         document.getElementById("nav-obj-new-eth-transaction").setAttribute("style", "display: block;");
     } else {
+        localStorage.clear();
         console.error("Invalid nav item" + navItem);
-        throw "Invalid nav item";
+        throw "Invalid nav item - reload page to try again";
     }
 }
 
@@ -977,34 +1008,20 @@ function update_nav() {
                 console.error("Invalid nav item in local storage");
                 localStorage.setItem("current-nav-item", "list");
 
-                set_selected_nav("list");
+                set_selected_nav("list-pending");
             }
         }
     } else {
-        set_selected_nav("list");
+        set_selected_nav("list-pending");
     }
 
 }
-function nav_trans_list() {
-    localStorage.setItem("current-nav-item", "list");
+function nav_to(page) {
+    localStorage.setItem("current-nav-item", page);
     update_nav();
+    return false;
 }
-function nav_contr_config() {
-    localStorage.setItem("current-nav-item", "config");
-    update_nav();
-}
-function nav_new_token_trans() {
-    localStorage.setItem("current-nav-item", "token");
-    update_nav();
-}
-function nav_new_eth_trans() {
-    localStorage.setItem("current-nav-item", "eth");
-    update_nav();
-}
-function nav_new_trans() {
-    localStorage.setItem("current-nav-item", "trans");
-    update_nav();
-}
+window.nav_to = nav_to;
 
 function clearAllSettings() {
     if (confirm("Are you sure you want to clear all settings including metamask connection info?")) {
@@ -1023,12 +1040,16 @@ function useDeployedContract() {
 
 window.useDeployedContract = useDeployedContract;
 
-
-window.nav_trans_list = nav_trans_list;
-window.nav_contr_config = nav_contr_config;
-window.nav_new_token_trans = nav_new_token_trans;
-window.nav_new_eth_trans = nav_new_eth_trans;
-window.nav_new_trans = nav_new_trans;
+function enableAdminView() {
+    localStorage.setItem("admin-view", "true");
+    window.location.reload();
+}
+function enableSimpleView() {
+    localStorage.removeItem("admin-view");
+    window.location.reload();
+}
+window.enableAdminView = enableAdminView;
+window.enableSimpleView = enableSimpleView;
 
 function getBaseAddress(uri) {
     let url = new URL(uri);
