@@ -104,6 +104,7 @@ textarea::placeholder {
     padding-right: 1em;
     padding-left: 1em;
     margin: auto;
+
 }
 #page-content-2 {
     min-width: 38em;
@@ -121,7 +122,6 @@ textarea::placeholder {
 }
 
 .metamask-connection-box {
-    border: 3px solid lightblue;
     border-radius: 1em;
     padding: 0.5em 1em 1em 1em;
     display: flex;
@@ -129,6 +129,9 @@ textarea::placeholder {
     margin: auto;
     flex-direction: column;
     position: relative;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+    background-color: rgba(255, 255, 255, 0.8);
 }
 .metamask-prompt {
     font-size: 1em;
@@ -136,11 +139,20 @@ textarea::placeholder {
 }
 
 .transaction-details {
-    border: 3px solid lightblue;
     border-radius: 1em;
     padding: 0.5em;
     margin-bottom: 2.0em;
     margin-top: 2em;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    background-color: rgba(255, 255, 255, 0.8);
+}
+#div-no-transaction-list {
+    padding: 1em;
+    border-radius: 1em;
+    margin-bottom: 1.0em;
+    margin-top: 1.5em;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    background-color: rgba(255, 255, 255, 0.8);
 }
 
 .transaction-details div {
@@ -283,33 +295,49 @@ textarea::placeholder {
     color: red;
 }
 
-.contract-owners-box {
-    padding: 1em;
-    border: 3px solid lightblue;
-    border-radius: 1em;
-    margin-bottom: 1.0em;
-    margin-top: 1.5em;
-}
-.nav-obj-ownership-management {
-    padding: 1em;
-    border: 3px solid lightblue;
-    border-radius: 1em;
-    margin-bottom: 1.0em;
-    margin-top: 1.5em;
-}
+
 .settings-main-entry {
     padding: 1em;
-    border: 3px solid lightblue;
     border-radius: 1em;
     margin-bottom: 1.0em;
     margin-top: 1.5em;
+
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+    background-color: rgba(255, 255, 255, 0.8);
+}
+body {
+    background: linear-gradient(45deg, #ffe5e5 0%, #fff0e8 99%, #fff0e8 100%);
+    background-attachment: fixed;
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+}
+#nav-band-1 {
+    background: linear-gradient(45deg, #33e5e5 0%, #fff0e8 99%, #fff0e8 100%);
+    background-attachment: fixed;
 
 }
-#div-no-transaction-list {
-    padding: 1em;
-    border: 3px solid lightblue;
-    border-radius: 1em;
-    margin-bottom: 1.0em;
-    margin-top: 1.5em;
 
+.panel {
+    background-color: rgba(255, 255, 255, 0.8);
+    border-radius: 10px;
+
+    margin: 20px auto;
+    max-width: 800px;
+    padding: 30px;
+}
+
+.panel-title {
+    color: #333;
+    font-family: Arial, sans-serif;
+    font-size: 24px;
+    margin-bottom: 15px;
+}
+
+.panel-content {
+    color: #555;
+    font-family: Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
 }
