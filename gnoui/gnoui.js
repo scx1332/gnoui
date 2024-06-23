@@ -221,7 +221,7 @@ async function downloadAbi(network, contractAddress) {
     }
 
     if (!globals.isUnsecure) {
-        console.warn("Unsecure mode, not downloading ABI");
+        console.warn("Secure mode, not downloading ABI");
         return null;
     }
 
