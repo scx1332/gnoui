@@ -2,8 +2,8 @@ button,
 input[type="button"],
 input[type="submit"],
 input[type="reset"] {
-    color: #005f8a; /* Darker blue for text */
-    border: 2px solid #b3e5fc; /* Slightly darker border */
+    color: #413a3a;
+    border: 2px solid #543e3e;
     border-radius: 0.3em; /* Rounded corners */
     padding: 0.2em 0.3em; /* Padding for a comfortable click area */
     font-size: 1.0em; /* Reasonable font size */
@@ -17,8 +17,9 @@ button:hover,
 input[type="button"]:hover,
 input[type="submit"]:hover,
 input[type="reset"]:hover {
-    background-color: #b3e5fc; /* Darker blue tint on hover */
-    border-color: #81d4fa; /* Darker border on hover */
+    background-color: #b5b0b0;
+    border-color: #111111;
+    color: white;
 }
 
 button:active,
@@ -52,7 +53,8 @@ input[type="reset"]:disabled {
 input {
     width: 100%;
     padding: 0.3em;    /* Padding inside the input field */
-    font-size: 0.9em;  /* Font size for the input text */
+    font-size: 1.1em;  /* Font size for the input text */
+    font-family: Roboto Mono, Consolas, monospace; /* Monospace font for the input text */
     border: 1px solid #ccc; /* Border with a light gray color */
     border-radius: 0.3em; /* Rounded corners */
     box-sizing: border-box; /* Ensures padding is included in the total width and height */
@@ -72,7 +74,8 @@ input::placeholder {
 textarea {
     width: 100%;
     padding: 0.3em;    /* Padding inside the input field */
-    font-size: 0.9em;  /* Font size for the input text */
+    font-size: 1.0em;  /* Font size for the input text */
+    font-family: monospace;
     border: 1px solid #ccc; /* Border with a light gray color */
     border-radius: 0.3em; /* Rounded corners */
     box-sizing: border-box; /* Ensures padding is included in the total width and height */
@@ -127,6 +130,7 @@ textarea::placeholder {
     display: flex;
     max-width: 40em;
     margin: auto;
+    margin-top: 0.5em;
     flex-direction: column;
     position: relative;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -176,7 +180,7 @@ textarea::placeholder {
     font-family: monospace;
     font-size: 1.1em;
     color: white;
-    background-color: darkblue;
+    background-color: #836666;
     padding: 0.5em;
     border-radius: 3px;
 }
@@ -195,7 +199,7 @@ textarea::placeholder {
 
     align-items: center;
     padding: 0.5em;
-    border-bottom: 1px solid #ccc;
+    border-bottom: 1px solid #615858;
 
 }
 
@@ -204,7 +208,7 @@ textarea::placeholder {
     justify-content: left;
     align-items: center;
     padding: 0.5em;
-    border-bottom: 1px solid #ccc;
+    border-bottom: 1px solid #615858;
 }
 
 .address-box-entry-last {
@@ -267,7 +271,7 @@ textarea::placeholder {
     width: 100%;
 }
 #nav-band-1 {
-    background-color: rgba(255, 255, 255, 0.8);
+    background-color: rgba(255, 255, 255, 0.3);
     #background: linear-gradient(45deg, #33e5e5 0%, #fff0e8 99%, #fff0e8 100%);
     background-attachment: fixed;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -285,22 +289,21 @@ textarea::placeholder {
     text-decoration: none;
     text-align: center;
     transition: background-color 0.5s;
-    background-color: #E0F7FA;
-    color: #006064;
-
+    background-color: rgba(1, 1, 1, 0.1);
+    color: #291e1e;
 }
 .nav-menu li a:hover {
-    background-color: #455A64;
+    background-color: rgba(1, 1, 1, 0.2);
     color: white;
 }
 .nav-menu li.nav-selected a {
     cursor: default;
-    background-color: #37474F;
-    color: white;
+    background-color: rgba(1, 1, 1, 0.6);
+    color: #ccc;
 }
 .nav-menu li.nav-selected a:hover {
-    background-color: #37474F;
-    color: white;
+    background-color: rgba(1, 1, 1, 0.6);
+    color: #D0D0D0;
 }
 
 .owner-address-entry {
@@ -341,7 +344,7 @@ textarea::placeholder {
     background-color: rgba(255, 255, 255, 0.8);
 }
 body {
-    background: linear-gradient(45deg, #ffe5e5 0%, #fff0e8 99%, #fff0e8 100%);
+    background: linear-gradient(45deg, #4a4a4a 0%, #e4c3b2 60%, #ffe1d1 100%);
     background-attachment: fixed;
     height: 100vh;
     margin: 0;
@@ -409,4 +412,11 @@ body {
     width: 26em;
     margin: 0.1em;
     padding: 0.2em;
+}
+#div-footer {
+    width: 100%;
+    background-color: rgba(255, 255, 255, 0.5);
+    height: 5em;
+    padding: 1.3em 0.3em;
+    align-content: center;
 }
