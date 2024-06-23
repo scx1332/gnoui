@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SVG Path Example</title>
+</head>
+<body>
+<svg width="400" height="400" xmlns="http://www.w3.org/2000/svg">
+    <path id="test" stroke="black" fill="transparent" />
+    <path id="test2" stroke="black" fill="transparent" />
+</svg>
+
+<button id="btn" onclick="set()">Click</button>
+
+<div class="slidecontainer">
+    <p>Default range slider:</p>
+    <input onchange="set()" style="width: 400px;" type="range" min="1" max="100" value="50">
+</div>
+
+<script>
+
+    function drawSmileBottom(points, scale, drawPosX, drawPosY) {
+        let svgPath = `M ${drawPosX * scale} ${drawPosY * scale}`;
+        for (let point of points) {
+            svgPath += ` L ${drawPosX * scale + point.x * scale} ${drawPosY * scale + point.y * scale}`;
+        }
+        svgPath += ` L ${drawPosX * scale} ${drawPosY * scale}`;
+        return svgPath;
+    }
+    function drawSmileBottomRounded(points, scale, drawPosX, drawPosY) {
+        let svgPath = `M ${drawPosX * scale} ${drawPosY * scale}`;
+
+        for (let i = 2; i < points.length; i += 2) {
+            let point = points[i];
+            let prevPoint = points[i - 1];
+            let middlePoint = `${drawPosX * scale + prevPoint.x * scale} ${drawPosY * scale + prevPoint.y * scale}`;
+            svgPath += ` C ${middlePoint} ${middlePoint} ${drawPosX * scale + point.x * scale} ${drawPosY * scale + point.y * scale}`;
+        }
+        svgPath += ` L ${drawPosX * scale} ${drawPosY * scale}`;
+        return svgPath;
+    }
+
+    function set() {
+        let scale = 300;
+
+        let width = scale;
+
+        let leftUpY = 0.5 * scale;
+        let leftUpX = 0.1 * scale;
+
+        let rightUpY = leftUpY;
+        let rightUpX = width - leftUpX;
+
+        let bottomCenterX = width / 2;
+        let bottomCenterY = 0.6 * scale + leftUpY
+
+
+        let point1 = {x: 0.0, y: 0.0};
+        let point2 = {x: 0.0, y: 0.1};
+        let point4 = {x: 0.2, y: 0.3};
+        let point5 = {x: 0.4, y: 0.4};
+        let pointCenter = {x: 0.5, y: 0.4};
+
+        let pointsLeft = [point1, point2, point4, point5];
+        let pointsRight = [];
+        for (let point of pointsLeft) {
+            pointsRight.push(
+                {
+                    x: 1.0 - point.x,
+                    y: point.y
+                });
+        }
+        let allPoints = pointsLeft.concat([pointCenter]).concat(pointsRight.reverse());
+
+
+        let drawPosX = 0.1;
+        let drawPosY = 0.1;
+
+        let svgPath1 = drawSmileBottom(allPoints, scale, drawPosX, drawPosY);
+        let svgPath2 = drawSmileBottomRounded(allPoints, scale, 0.1, 0.1);
+
+        document.getElementById('test').setAttribute('d', svgPath1);
+        document.getElementById('test2').setAttribute('d', svgPath2);
+    }
+
+   window.onload = set;
+</script>
+
+</body>
+</html>

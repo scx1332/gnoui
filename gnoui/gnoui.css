@@ -2,15 +2,15 @@ button,
 input[type="button"],
 input[type="submit"],
 input[type="reset"] {
-    background-color: #e0f7ff; /* Light tinted blue */
     color: #005f8a; /* Darker blue for text */
     border: 2px solid #b3e5fc; /* Slightly darker border */
     border-radius: 0.3em; /* Rounded corners */
-    padding: 0.5em 0.6em; /* Padding for a comfortable click area */
+    padding: 0.2em 0.3em; /* Padding for a comfortable click area */
     font-size: 1.0em; /* Reasonable font size */
     font-family: 'Arial', sans-serif; /* Clean, sans-serif font */
     cursor: pointer; /* Pointer cursor on hover */
     transition: background-color 0.3s, border-color 0.3s; /* Smooth transitions */
+    margin: 0.1em;
 }
 
 button:hover,
@@ -156,7 +156,11 @@ textarea::placeholder {
 .decoded-param {
     font-family: monospace;
 }
-
+.address-box {
+    display: flex;
+    justify-content: left;
+    align-items: center;
+}
 .address-box a {
     text-decoration: none; /* Removes underline */
     padding: 0.5em; /* Adds padding around the text */
@@ -164,7 +168,17 @@ textarea::placeholder {
     transition: color 0.3s, background-color 0.3s; /* Smooth transition for color changes */
     background-color: #EEEEEE;
     font-family: monospace;
-    color: blue;
+    font-size: 1.1em;
+    color: black;
+    border: 1px solid #ccc;
+}
+.address-box .eth-address-entry {
+    font-family: monospace;
+    font-size: 1.1em;
+    color: white;
+    background-color: darkblue;
+    padding: 0.5em;
+    border-radius: 3px;
 }
 
 .address-box a:hover {
@@ -173,10 +187,10 @@ textarea::placeholder {
 }
 
 .address-box-owner a {
-    background-color: #DDEEDD !important;
+    background-color: #FFF !important;
 }
 .address-box-multi-sig a {
-    background-color: #EEDDDD !important;
+    background-color: #FFF !important;
 }
 
 .address-box-entry {
@@ -195,7 +209,7 @@ textarea::placeholder {
 }
 
 .details-label {
-    min-width: 12em;
+    min-width: 10em;
 }
 .details-value {
     max-width: 50em;
@@ -234,6 +248,8 @@ textarea::placeholder {
     padding: 0em;
     width: 100%;
     justify-content: space-between;
+    border-radius: 1em;
+    overflow: hidden;
 }
 
 /* Basic styles */
@@ -243,6 +259,12 @@ textarea::placeholder {
     margin: 0;
     display: flex;
     width: 100%;
+}
+#nav-band-1 {
+    background-color: rgba(255, 255, 255, 0.8);
+    #background: linear-gradient(45deg, #33e5e5 0%, #fff0e8 99%, #fff0e8 100%);
+    background-attachment: fixed;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .nav-menu li {
@@ -258,17 +280,21 @@ textarea::placeholder {
     text-decoration: none;
     text-align: center;
     transition: background-color 0.5s;
+    background-color: #37474F;
+;
 
 }
 .nav-menu li a:hover {
-    background-color: #575757;
+    background-color: #455A64;
 }
 .nav-menu li.nav-selected a {
-    background-color: #678797;
+    background-color: #E0F7FA;
     cursor: default;
+    color: #006064;
 }
 .nav-menu li.nav-selected a:hover {
-    background-color: #678797;
+    background-color: #B2EBF2;
+    color: #004D40;
 }
 
 .owner-address-entry {
@@ -315,11 +341,7 @@ body {
     margin: 0;
     padding: 0;
 }
-#nav-band-1 {
-    background: linear-gradient(45deg, #33e5e5 0%, #fff0e8 99%, #fff0e8 100%);
-    background-attachment: fixed;
 
-}
 
 .panel {
     background-color: rgba(255, 255, 255, 0.8);
@@ -343,3 +365,38 @@ body {
     font-size: 16px;
     line-height: 1.6;
 }
+.icon-not-confirmed {
+    background-image: url("icons/not-confirmed.png");
+    background-size: auto 100%;
+    background-repeat: no-repeat;
+    background-position: left top;
+    height: 2.5em;
+    width: 2.5em;
+}
+.icon-confirmed {
+    background-image: url("icons/confirmed.png");
+    background-size: auto 100%;
+    background-repeat: no-repeat;
+    background-position: left top;
+    height: 2.5em;
+    width: 2.5em;
+}
+.new-eth-icon {
+    background-image: url("icons/new-eth.png");
+    background-size: auto 100%;
+    background-repeat: no-repeat;
+    background-position: left top;
+    height: 3.5em;
+    width: 10.5em;
+    margin-bottom: 1em;
+}
+.icon-multisig {
+    background-image: url("icons/safe.png");
+    background-size: auto 100%;
+    background-repeat: no-repeat;
+    background-position: left top;
+    margin-top: 0.5em;
+    height: 2.5em;
+    width: 2.5em;
+}
+

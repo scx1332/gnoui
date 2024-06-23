@@ -53,7 +53,15 @@ window.addEventListener('load', async () => {
     let res = await sdk.connect();
 
     globals.isAdmin = localStorage.getItem("admin-view") === "true";
+    globals.isUnsecure = localStorage.getItem("unsecure-mode") === "true";
 
+    if (globals.isUnsecure) {
+        document.getElementById("button-unsecure-view").setAttribute("style", "display: none;");
+        document.getElementById("button-secure-view").setAttribute("style", "display: block;");
+    } else {
+        document.getElementById("button-unsecure-view").setAttribute("style", "display: block;");
+        document.getElementById("button-secure-view").setAttribute("style", "display: none;");
+    }
     if (globals.isAdmin) {
         document.getElementById("button-admin-view").setAttribute("style", "display: none;");
         document.getElementById("button-simple-view").setAttribute("style", "display: block;");
@@ -212,6 +220,11 @@ async function downloadAbi(network, contractAddress) {
         return localStorageItem;
     }
 
+    if (!globals.isUnsecure) {
+        console.warn("Unsecure mode, not downloading ABI");
+        return null;
+    }
+
     for (let i = 0; i < 3; i++) {
         let response = await fetch(abiUrl);
         if (response.status !== 200) {
@@ -255,11 +268,11 @@ function createDivWithAddress(address, needSafe=false) {
 
     if (globals.owners.includes(address)) {
         className += " address-box-owner";
-        extra = "(Own)";
+        extra = "";
     }
     if (address === globals.multiSigAddress) {
         className += " address-box-multi-sig";
-        extra = "(Mul)";
+        extra = "G";
     } else {
         if (needSafe) {
             let isContractVerified = false;
@@ -279,13 +292,24 @@ function createDivWithAddress(address, needSafe=false) {
     }
     if (address === connected) {
         className += " address-box-connected";
-        extra = "(Con)";
+        extra = "Me";
     }
-    return createDivWithClassAndContent(
-        className,
-        `<a target="_blank" href="${globals.etherscan}/address/${address}">${extra}-${address}</a>`,
-        true
-    );
+    if (globals.isUnsecure) {
+        return createDivWithClassAndContent(
+            className,
+            `<a target="_blank" href="${globals.etherscan}/address/${address}">${extra}-${address}</a>`,
+            true
+        );
+    } else {
+        if (extra) {
+            extra = extra + "-";
+        }
+        return createDivWithClassAndContent(
+            className,
+            `<div class="eth-address-entry">${extra}${address}</div>`,
+            true
+        );
+    }
 }
 
 function renderDetailsEntry(labelClass, labelText, valueClass, valueText) {
@@ -326,7 +350,7 @@ function renderOwnersEntry(owners, isConfirmed) {
 
     entryDiv.appendChild(createDivWithClassAndContent(
         `details-label`,
-        isConfirmed ? "Confirmed by:" : "Not (yet) confirmed by:"));
+        isConfirmed ? "Confirmed by:" : "Not (yet)\nconfirmed by:"));
 
     let div = createDivWithClass('div', "details-value transaction-details-value");
     for (let owner of owners) {
@@ -387,12 +411,22 @@ async function getTransactionDetails(contract, transactionId) {
         let parentDiv = document.createElement('div');
         parentDiv.className = "address-box-entry";
 
-        parentDiv.appendChild(createDivWithClassAndContent(
-            "details-label transaction-details-header-label",
-            "Transaction ID/status:"));
+        if (!executed) {
+            parentDiv.appendChild(createDivWithClassAndContent(
+                "details-label transaction-details-header-label",
+                '<div style="display:flex;flex-direction: horizontal;"><div class="icon-not-confirmed"></div><div>Awaiting</div></div>',
+                true
+            ));
+        } else {
+            parentDiv.appendChild(createDivWithClassAndContent(
+                "details-label transaction-details-header-label",
+                '<div style="display:flex;flex-direction: horizontal;"><div class="icon-confirmed"></div><div>Confirmed</div></div>',
+                true
+            ));
+        }
         parentDiv.appendChild(createDivWithClassAndContent(
             "details-value transaction-details-value",
-            `${transactionId} - ${transactionStatus}`,
+            `ID: ${transactionId}`,
             true
         ));
         newDiv.appendChild(parentDiv);
@@ -433,18 +467,18 @@ async function getTransactionDetails(contract, transactionId) {
     let decoded= null;
 
     if (isContractCall) {
-        //try {
+        try {
             abi = await downloadAbi("holesky", targetAddr);
             iface = new Interface(abi);
             func = iface.getFunction(hexlify(bytes.subarray(0, 4)));
             decoded = iface.decodeFunctionData(func, hexlify(bytes));
-        /*} catch (e) {
+        } catch (e) {
             console.error(`Error decoding function data: ${e}`);
             abi = null;
             iface = null;
             func = null;
             decoded = null;
-        }*/
+        }
     }
 
     {
@@ -479,11 +513,11 @@ async function getTransactionDetails(contract, transactionId) {
         if (executed) {
             parentDiv.appendChild(createDivWithClassAndContent(
                 "details-label address-box-label",
-                "Gas (ETH) transferred: "));
+                "ETH transferred: "));
         } else {
             parentDiv.appendChild(createDivWithClassAndContent(
                 "details-label address-box-label",
-                "Gas (ETH) to transfer: "));
+                "ETH to transfer: "));
         }
         parentDiv.appendChild(createDivWithClassAndContent(
             "details-value ether-amount-box",
@@ -531,12 +565,21 @@ async function getTransactionDetails(contract, transactionId) {
         }
     } else {
         {
-            newDiv.appendChild(renderDetailsEntry(
-                "address-box-label",
-                "Function signature:",
-                "error-signature-box",
-                "CAUTION, No ABI decoded!"
-            ));
+            if (executed) {
+                newDiv.appendChild(renderDetailsEntry(
+                    "address-box-label",
+                    "Function signature:",
+                    "error-signature-box",
+                    "No ABI decoded"
+                ));
+            } else {
+                newDiv.appendChild(renderDetailsEntry(
+                    "address-box-label",
+                    "Function signature:",
+                    "error-signature-box",
+                    "CAUTION, No ABI decoded!"
+                ));
+            }
         }
     }
 
@@ -668,9 +711,9 @@ async function get_chain_id() {
 
     globals.multiSigAddress = getMultiSigAddress(globals.network);
 
+    let div = createDivWithAddress(globals.multiSigAddress);
 
-    document.getElementById("multisig-address").innerText = globals.multiSigAddress;
-    document.getElementById("multisig-address").href = `${globals.etherscan}/address/` + globals.multiSigAddress;
+    document.getElementById("multisig-address").appendChild(div);
 
     try {
         const contract = new Contract(globals.multiSigAddress, gnosisAbi, new BrowserProvider(provider))
@@ -684,6 +727,18 @@ async function get_chain_id() {
             localStorage.setItem("current-nav-item", uriParams.get('nav'));
         }
         update_nav();
+        if (!(globals.owners.includes(connected))) {
+            document.getElementById("send-gas-button").setAttribute("disabled", "disabled");
+            document.getElementById("send-gas-button").setAttribute("title", "You have to be an owner of the contract to initiate transaction")
+            document.getElementById("send-token-button").setAttribute("disabled", "disabled");
+            document.getElementById("send-token-button").setAttribute("title", "You have to be an owner of the contract to initiate transaction")
+            document.getElementById("send-any-button").setAttribute("disabled", "disabled");
+            document.getElementById("send-any-button").setAttribute("title", "You have to be an owner of the contract to initiate transaction")
+        } else {
+            document.getElementById("send-gas-button").removeAttribute("disabled");
+            document.getElementById("send-token-button").removeAttribute("disabled");
+            document.getElementById("send-any-button").removeAttribute("disabled");
+        }
         document.getElementById("page-content-1").setAttribute("style", "display: block;")
         document.getElementById("page-content-2").setAttribute("style", "display: block;")
         document.getElementById("page-content-3").setAttribute("style", "display: block;")
@@ -866,7 +921,14 @@ async function sendGasTransfer() {
     let iface = new Interface(gnosisAbi);
     let call = iface.encodeFunctionData("submitTransaction", [address, bigAmount, "0x"]);
 
-    let gasLimitHex = await estimateMultiSigMethod(new BrowserProvider(provider), call);
+    let gasLimitHex;
+    try {
+        gasLimitHex = await estimateMultiSigMethod(new BrowserProvider(provider), call);
+    } catch (e) {
+        console.error(e);
+        document.getElementById('error-box').innerText = e.toString();
+        return;
+    }
 
     if (confirm(confirmStr)) {
         window.ethereum.request({
@@ -882,6 +944,7 @@ async function sendGasTransfer() {
             ]
         });
     }
+
 }
 window.sendGasTransfer = sendGasTransfer;
 
@@ -1051,13 +1114,23 @@ function enableSimpleView() {
 window.enableAdminView = enableAdminView;
 window.enableSimpleView = enableSimpleView;
 
+function setSecureMode(secure) {
+    if (secure) {
+        localStorage.removeItem("unsecure-mode");
+    } else {
+        localStorage.setItem("unsecure-mode", "true");
+    }
+    window.location.reload();
+}
+window.setSecureMode = setSecureMode;
+
 function getBaseAddress(uri) {
     let url = new URL(uri);
     return `${url.protocol}//${url.hostname}${url.port ? `:${url.port}` : ''}`;
 }
 
 function saveAddressToClipboard() {
-    let address = document.getElementById("multisig-address").innerText;
+    let address = globals.multiSigAddress;
     navigator.clipboard.writeText(getBaseAddress(window.location.href) + "?multisig=" + address);
     alert("Address copied to clipboard");
 }

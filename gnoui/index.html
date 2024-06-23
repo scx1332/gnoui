@@ -28,6 +28,8 @@
             <button id="button-clear-all" onclick="clearAllSettings()">Clear All</button>
             <button id="button-admin-view" onclick="enableAdminView()">Enable admin view</button>
             <button id="button-simple-view" onclick="enableSimpleView()">Enable simple view</button>
+            <button id="button-secure-view" onclick="setSecureMode(true)">Disable Etherscan</button>
+            <button id="button-unsecure-view" onclick="setSecureMode(false)">Enable Etherscan</button>
 
         </div>
         <select id="connected-addresses" onchange="connectedAccountChanged()" style="display: None;">
@@ -36,7 +38,10 @@
         <div style="padding-top: 1em; padding-bottom: 0em;">
             Current multi-signature contract address:
             <div class="address-box address-box-multi-sig">
-                <a id="multisig-address" target="_blank"></a>
+                <div class="icon-multisig" style="display: inline-block;"></div>
+
+                <div id="multisig-address"></div>
+
                 <button id="switch-new-contract-address" onclick="showNewContractOptions()">Change</button>
                 <button id="copy-multisig-link1" onclick="saveAddressToClipboard()">Share</button>
             </div>
@@ -125,12 +130,13 @@
     </div>
     <div id="nav-obj-new-eth-transaction" style="border: 1px solid blue; padding: 1em; display: flex; flex-direction: column;">
         <div class="settings-main-entry" >
-            <div style="margin-bottom: 0.5em; font-weight: bold">Send ETH (pure gas token) transfer</div>
+            <div class="new-eth-icon"></div>
+            <div style="margin-bottom: 0.5em; font-weight: bold">Initiate ETH transfer from MultiSig address</div>
             <div style="margin: 0.2em;">
                 Receiver (destination) address <input type="text" id="gas-destination-address" value="0xd8da6bf26964af9d7eed9e03e53415d37aa96045"/>
             </div>
             <div style="margin: 0.2em;">
-                Value: <input type="text" id="gas-transfer-value" value="0.000000000001"/>
+                Value: <input type="text" id="gas-transfer-value" value="0.0"/>
             </div>
             <div style="padding-top: 0.5em;">
                 <button id="send-gas-button" onclick="sendGasTransfer()">Send transaction</button>
