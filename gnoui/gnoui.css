@@ -294,15 +294,15 @@ textarea::placeholder {
 }
 .nav-menu li a:hover {
     background-color: rgba(1, 1, 1, 0.2);
-    color: white;
+    color: #344f6b;
 }
 .nav-menu li.nav-selected a {
     cursor: default;
-    background-color: rgba(1, 1, 1, 0.6);
+    background-color: rgb(73 122 136);
     color: #ccc;
 }
 .nav-menu li.nav-selected a:hover {
-    background-color: rgba(1, 1, 1, 0.6);
+    background-color: rgb(73 122 136);
     color: #D0D0D0;
 }
 
