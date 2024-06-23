@@ -36,8 +36,8 @@
 
         </select>
         <div style="padding-top: 1em; padding-bottom: 0em;">
-            Current multi-signature contract address:
-            <div class="address-box address-box-multi-sig">
+            Selected multi-signature contract address:
+            <div class="box-multi-sig">
                 <div class="icon-multisig" style="display: inline-block;"></div>
 
                 <div id="multisig-address"></div>
@@ -132,6 +132,9 @@
         <div class="settings-main-entry" >
             <div class="new-eth-icon"></div>
             <div style="margin-bottom: 0.5em; font-weight: bold">Initiate ETH transfer from MultiSig address</div>
+            <div style="margin: 0.2em;">
+                <b>Available:</b> <span id="available-ethers">N/A</span>
+            </div>
             <div style="margin: 0.2em;">
                 Receiver (destination) address <input type="text" id="gas-destination-address" value="0xd8da6bf26964af9d7eed9e03e53415d37aa96045"/>
             </div>

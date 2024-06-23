@@ -727,6 +727,7 @@ async function get_chain_id() {
             localStorage.setItem("current-nav-item", uriParams.get('nav'));
         }
         update_nav();
+
         if (!(globals.owners.includes(connected))) {
             document.getElementById("send-gas-button").setAttribute("disabled", "disabled");
             document.getElementById("send-gas-button").setAttribute("title", "You have to be an owner of the contract to initiate transaction")
@@ -742,6 +743,9 @@ async function get_chain_id() {
         document.getElementById("page-content-1").setAttribute("style", "display: block;")
         document.getElementById("page-content-2").setAttribute("style", "display: block;")
         document.getElementById("page-content-3").setAttribute("style", "display: block;")
+
+
+
 
         await getTransactionsIds(contract, true);
         await getTransactionsIds(contract, false);
@@ -1051,6 +1055,10 @@ function set_selected_nav(navItem) {
     } else if (navItem == "eth") {
         document.getElementById("nav-new-eth-trans-btn").setAttribute("class", "nav-selected");
         document.getElementById("nav-obj-new-eth-transaction").setAttribute("style", "display: block;");
+
+        new BrowserProvider(provider).getBalance(globals.multiSigAddress).then((balance) => {
+            document.getElementById("available-ethers").innerText = `${formatEther(balance)} ${globals.ethSymbol}`;
+        });
     } else {
         localStorage.clear();
         console.error("Invalid nav item" + navItem);

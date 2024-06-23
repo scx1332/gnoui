@@ -189,8 +189,14 @@ textarea::placeholder {
 .address-box-owner a {
     background-color: #FFF !important;
 }
-.address-box-multi-sig a {
-    background-color: #FFF !important;
+.box-multi-sig {
+    display: flex;
+    justify-content: space-between;
+
+    align-items: center;
+    padding: 0.5em;
+    border-bottom: 1px solid #ccc;
+
 }
 
 .address-box-entry {
@@ -276,25 +282,25 @@ textarea::placeholder {
     display: block;
     padding: 1em;
 
-    color: white;
     text-decoration: none;
     text-align: center;
     transition: background-color 0.5s;
-    background-color: #37474F;
-;
+    background-color: #E0F7FA;
+    color: #006064;
 
 }
 .nav-menu li a:hover {
     background-color: #455A64;
+    color: white;
 }
 .nav-menu li.nav-selected a {
-    background-color: #E0F7FA;
     cursor: default;
-    color: #006064;
+    background-color: #37474F;
+    color: white;
 }
 .nav-menu li.nav-selected a:hover {
-    background-color: #B2EBF2;
-    color: #004D40;
+    background-color: #37474F;
+    color: white;
 }
 
 .owner-address-entry {
@@ -395,8 +401,12 @@ body {
     background-size: auto 100%;
     background-repeat: no-repeat;
     background-position: left top;
-    margin-top: 0.5em;
     height: 2.5em;
     width: 2.5em;
 }
 
+#connected-addresses {
+    width: 26em;
+    margin: 0.1em;
+    padding: 0.2em;
+}
