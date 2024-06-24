@@ -49,11 +49,10 @@ let globals = {
 
 // on load
 window.addEventListener('load', async () => {
-    update_nav();
-    let res = await sdk.connect();
-
     globals.isAdmin = localStorage.getItem("admin-view") === "true";
     globals.isUnsecure = localStorage.getItem("unsecure-mode") === "true";
+    update_nav();
+    let res = await sdk.connect();
 
     if (globals.isUnsecure) {
         document.getElementById("button-unsecure-view").setAttribute("style", "display: none;");
@@ -202,7 +201,7 @@ function getMultiSigAddress(network) {
     if (localStorageItem) {
         return getAddress(localStorageItem.toLowerCase());
     }
-    return "0x0000000000000000000000000000000000000000";
+    return null;
 }
 
 async function downloadAbi(network, contractAddress) {
@@ -715,46 +714,52 @@ async function get_chain_id() {
 
     document.getElementById("multisig-address").appendChild(div);
 
+
+    if (uriParams.has('nav')) {
+        localStorage.setItem("current-nav-item", uriParams.get('nav'));
+    }
+    update_nav();
+    updateConnected();
+
+    let contract = null;
+    if (globals.multiSigAddress != null) {
+        try {
+            contract = new Contract(globals.multiSigAddress, gnosisAbi, new BrowserProvider(provider))
+
+            globals.owners = await getOwners(contract);
+            globals.requiredConfirmations = await contract.required();
+            document.getElementById("input-required-confirmations").value = globals.requiredConfirmations;
+            updateOwners();
+
+            if (!(globals.owners.includes(connected))) {
+                document.getElementById("send-gas-button").setAttribute("disabled", "disabled");
+                document.getElementById("send-gas-button").setAttribute("title", "You have to be an owner of the contract to initiate transaction")
+                document.getElementById("send-token-button").setAttribute("disabled", "disabled");
+                document.getElementById("send-token-button").setAttribute("title", "You have to be an owner of the contract to initiate transaction")
+                document.getElementById("send-any-button").setAttribute("disabled", "disabled");
+                document.getElementById("send-any-button").setAttribute("title", "You have to be an owner of the contract to initiate transaction")
+            } else {
+                document.getElementById("send-gas-button").removeAttribute("disabled");
+                document.getElementById("send-token-button").removeAttribute("disabled");
+                document.getElementById("send-any-button").removeAttribute("disabled");
+            }
+        } catch (e) {
+            console.error(e);
+            document.getElementById('error-box').innerText = "Error fetching contract details: " + e.toString();
+        }
+    }
+    document.getElementById("page-content-1").setAttribute("style", "display: block;")
+    document.getElementById("page-content-2").setAttribute("style", "display: block;")
+    document.getElementById("page-content-3").setAttribute("style", "display: block;")
+
     try {
-        const contract = new Contract(globals.multiSigAddress, gnosisAbi, new BrowserProvider(provider))
-
-        globals.owners = await getOwners(contract);
-        globals.requiredConfirmations = await contract.required();
-        document.getElementById("input-required-confirmations").value = globals.requiredConfirmations;
-        updateOwners();
-        updateConnected();
-        if (uriParams.has('nav')) {
-            localStorage.setItem("current-nav-item", uriParams.get('nav'));
+        if (contract) {
+            await getTransactionsIds(contract, true);
+            await getTransactionsIds(contract, false);
         }
-        update_nav();
-
-        if (!(globals.owners.includes(connected))) {
-            document.getElementById("send-gas-button").setAttribute("disabled", "disabled");
-            document.getElementById("send-gas-button").setAttribute("title", "You have to be an owner of the contract to initiate transaction")
-            document.getElementById("send-token-button").setAttribute("disabled", "disabled");
-            document.getElementById("send-token-button").setAttribute("title", "You have to be an owner of the contract to initiate transaction")
-            document.getElementById("send-any-button").setAttribute("disabled", "disabled");
-            document.getElementById("send-any-button").setAttribute("title", "You have to be an owner of the contract to initiate transaction")
-        } else {
-            document.getElementById("send-gas-button").removeAttribute("disabled");
-            document.getElementById("send-token-button").removeAttribute("disabled");
-            document.getElementById("send-any-button").removeAttribute("disabled");
-        }
-        document.getElementById("page-content-1").setAttribute("style", "display: block;")
-        document.getElementById("page-content-2").setAttribute("style", "display: block;")
-        document.getElementById("page-content-3").setAttribute("style", "display: block;")
-
-
-
-
-        await getTransactionsIds(contract, true);
-        await getTransactionsIds(contract, false);
     } catch (e) {
         console.error(e);
-        document.getElementById('error-box').innerText = "Error fetching contract details";
-        document.getElementById("page-content-1").setAttribute("style", "display: block;")
-        document.getElementById("page-content-2").setAttribute("style", "display: block;")
-        document.getElementById("page-content-3").setAttribute("style", "display: block;")
+        document.getElementById('error-box').innerText = "Error fetching contract transaction details: " + e.toString();
     }
 
 }
