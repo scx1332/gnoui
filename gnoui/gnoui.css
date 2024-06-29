@@ -435,3 +435,10 @@ body {
 .question-guy-body {
     fill: #007BFF;
 }
+
+#send-eth-error-box {
+    white-space: pre-wrap;
+    font-family: monospace;
+    word-wrap: anywhere;
+    overflow-wrap: anywhere;
+}

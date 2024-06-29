@@ -137,13 +137,18 @@
                 <b>Available ETH:</b> <span id="available-ethers">N/A</span>
             </div>
             <div style="margin: 0.8em 0.2em;">
-                Receiver (destination) address <input type="text" id="gas-destination-address" value="0xd8da6bf26964af9d7eed9e03e53415d37aa96045"/>
+                Receiver (destination) address <input type="text" id="gas-destination-address" value="0x0000000000000000000000000000000000000000"/>
             </div>
             <div style="margin: 0.8em 0.2em;">
                 Value: <input type="text" id="gas-transfer-value" value="0.0"/>
             </div>
             <div style="padding-top: 0.5em;">
                 <button id="send-gas-button" onclick="sendGasTransfer()">Send transaction</button>
+            </div>
+            <div id="send-eth-error-box" style="color: red; padding: 0.2em"></div>
+            <div style="padding: 0.2em" id="send-eth-metamask-result"></div>
+            <div id="eth-reload-page-div" style="padding-top: 0.5em; display: none">
+                <button id="eth-refresh-page-button" onclick="window.location.reload()">Reload application</button>
             </div>
         </div>
     </div>
@@ -154,7 +159,7 @@
                 Token address: <input type="text" id="token-address" value="0x8888888815bf4DB87e57B609A50f938311EEd068"/>
             </div>
             <div style="margin: 0.2em;">
-                Receiver (destination) address: <input type="text" id="token-dest-address" value="0x23D57ac10a98e14f30068d06403e8f9D97657428"/>
+                Receiver (destination) address: <input type="text" id="token-dest-address" value="0x0000000000000000000000000000000000000000"/>
             </div>
             <div style="margin: 0.2em;">
                 Token amount: <input type="text" id="token-transfer-value" value="0.00001"/>

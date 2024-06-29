@@ -403,17 +403,24 @@ async function getTransactionDetails(contract, transactionId) {
         throw "Data must be Uint8Array";
     }
     let isContractCall = (bytes.length > 0);
+    if (!globals.isAdmin && isContractCall) {
+        return false;
+    }
 
     let newDiv = document.createElement('div');
     newDiv.className = "transaction-details";
 
-    let transactionStatus = executed ? "Executed" : "Pending";
     {
         let parentDiv = document.createElement('div');
         parentDiv.className = "address-box-entry";
 
         if (!executed) {
-            let transactionInfo = `Transaction with id: ${transactionId}\nawaits confirmation`;
+            let transactionInfo;
+            if (isContractCall) {
+                transactionInfo = `Transaction with id: ${transactionId}\nawaits confirmation`;
+            } else {
+                transactionInfo = `ETH transfer with id: ${transactionId}\nawaits confirmation`;
+            }
             parentDiv.appendChild(createDivWithClassAndContent(
                 "details-label transaction-details-header-label",
                 `<div style="display:flex;flex-direction: row;align-items: center;"><div class="icon-not-confirmed"></div><div class="transaction-explanation">${transactionInfo}</div></div>`,
@@ -432,12 +439,7 @@ async function getTransactionDetails(contract, transactionId) {
                 true
             ));
         }
-        /*
-        parentDiv.appendChild(createDivWithClassAndContent(
-            "details-value transaction-details-value",
-            `ID: ${transactionId}`,
-            true
-        ));*/
+
         newDiv.appendChild(parentDiv);
     }
 
@@ -920,45 +922,57 @@ async function estimateMultiSigMethod(prov, callData) {
 
 
 async function sendGasTransfer() {
-    let address = document.getElementById('gas-destination-address').value;
-    let amount = document.getElementById('gas-transfer-value').value;
-    let bigAmount = parseEther(amount);
-    let bigAmountHex = '0x' + bigAmount.toString(16);
-    // be extra careful with this
-    bigAmount = BigInt(bigAmountHex);
-
-    let confirmStr = "Are you sure you want to send \n";
-    confirmStr += `${formatEther(bigAmount)} ETH (dec: ${bigAmount.toString()} wei, hex: ${bigAmountHex}) \n`;
-    confirmStr += `to ${address}`;
-
-
-    let iface = new Interface(gnosisAbi);
-    let call = iface.encodeFunctionData("submitTransaction", [address, bigAmount, "0x"]);
-
-    let gasLimitHex;
+    document.getElementById('send-eth-error-box').innerText = "";
     try {
-        gasLimitHex = await estimateMultiSigMethod(new BrowserProvider(provider), call);
+        let address = document.getElementById('gas-destination-address').value;
+        let amount = document.getElementById('gas-transfer-value').value;
+        let bigAmount = parseEther(amount);
+        let bigAmountHex = '0x' + bigAmount.toString(16);
+        // be extra careful with this
+        bigAmount = BigInt(bigAmountHex);
+
+        let confirmStr = "Are you sure you want to send \n";
+        confirmStr += `${formatEther(bigAmount)} ETH (dec: ${bigAmount.toString()} wei, hex: ${bigAmountHex}) \n`;
+        confirmStr += `to ${address}`;
+
+
+        let iface = new Interface(gnosisAbi);
+        let call = iface.encodeFunctionData("submitTransaction", [address, bigAmount, "0x"]);
+
+        let gasLimitHex;
+        try {
+            gasLimitHex = await estimateMultiSigMethod(new BrowserProvider(provider), call);
+        } catch (e) {
+            document.getElementById('send-eth-error-box').innerText = e.toString();
+            return;
+        }
+
+        document.getElementById('send-gas-button').setAttribute("disabled", "disabled");
+
+        if (confirm(confirmStr)) {
+            let tx = await window.ethereum.request({
+                "method": "eth_sendTransaction",
+                "params": [
+                    {
+                        "to": globals.multiSigAddress,
+                        "from": connected,
+                        "gas": gasLimitHex,
+                        "value": "0x0",
+                        "data": call,
+                    }
+                ]
+            });
+            document.getElementById('send-eth-metamask-result').innerText = `Transaction sent via MetaMask to blockchain. Transaction is being processed on blockchain. Normally it can take from couple of seconds up to couple of minutes.`;
+            let receipt = await (new BrowserProvider(provider)).waitForTransaction(tx);
+            document.getElementById('send-eth-metamask-result').innerText = `Transaction found on blockchain. Refresh page to see it on the list.`;
+
+            document.getElementById('eth-reload-page-div').setAttribute("style", "padding-top: 0.5em; display: block;");
+        }
     } catch (e) {
         console.error(e);
-        document.getElementById('error-box').innerText = e.toString();
-        return;
+        document.getElementById('send-eth-error-box').innerText = e.toString();
     }
-
-    if (confirm(confirmStr)) {
-        window.ethereum.request({
-            "method": "eth_sendTransaction",
-            "params": [
-                {
-                    "to": globals.multiSigAddress,
-                    "from": connected,
-                    "gas": gasLimitHex,
-                    "value": "0x0",
-                    "data": call,
-                }
-            ]
-        });
-    }
-
+    document.getElementById('send-gas-button').removeAttribute("disabled");
 }
 window.sendGasTransfer = sendGasTransfer;
 
