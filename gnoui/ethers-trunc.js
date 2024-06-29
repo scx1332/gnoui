@@ -18658,225 +18658,6 @@ function parseOffchainLookup(data) {
 }
 
 /**
- *  Generally the [[Wallet]] and [[JsonRpcSigner]] and their sub-classes
- *  are sufficent for most developers, but this is provided to
- *  fascilitate more complex Signers.
- *
- *  @_section: api/providers/abstract-signer: Subclassing Signer [abstract-signer]
- */
-function checkProvider(signer, operation) {
-    if (signer.provider) {
-        return signer.provider;
-    }
-    assert(false, "missing provider", "UNSUPPORTED_OPERATION", { operation });
-}
-async function populate(signer, tx) {
-    let pop = copyRequest(tx);
-    if (pop.to != null) {
-        pop.to = resolveAddress(pop.to, signer);
-    }
-    if (pop.from != null) {
-        const from = pop.from;
-        pop.from = Promise.all([
-            signer.getAddress(),
-            resolveAddress(from, signer)
-        ]).then(([address, from]) => {
-            assertArgument(address.toLowerCase() === from.toLowerCase(), "transaction from mismatch", "tx.from", from);
-            return address;
-        });
-    }
-    else {
-        pop.from = signer.getAddress();
-    }
-    return await resolveProperties(pop);
-}
-/**
- *  An **AbstractSigner** includes most of teh functionality required
- *  to get a [[Signer]] working as expected, but requires a few
- *  Signer-specific methods be overridden.
- *
- */
-class AbstractSigner {
-    /**
-     *  The provider this signer is connected to.
-     */
-    provider;
-    /**
-     *  Creates a new Signer connected to %%provider%%.
-     */
-    constructor(provider) {
-        defineProperties(this, { provider: (provider || null) });
-    }
-    async getNonce(blockTag) {
-        return checkProvider(this, "getTransactionCount").getTransactionCount(await this.getAddress(), blockTag);
-    }
-    async populateCall(tx) {
-        const pop = await populate(this, tx);
-        return pop;
-    }
-    async populateTransaction(tx) {
-        const provider = checkProvider(this, "populateTransaction");
-        const pop = await populate(this, tx);
-        if (pop.nonce == null) {
-            pop.nonce = await this.getNonce("pending");
-        }
-        if (pop.gasLimit == null) {
-            pop.gasLimit = await this.estimateGas(pop);
-        }
-        // Populate the chain ID
-        const network = await (this.provider).getNetwork();
-        if (pop.chainId != null) {
-            const chainId = getBigInt(pop.chainId);
-            assertArgument(chainId === network.chainId, "transaction chainId mismatch", "tx.chainId", tx.chainId);
-        }
-        else {
-            pop.chainId = network.chainId;
-        }
-        // Do not allow mixing pre-eip-1559 and eip-1559 properties
-        const hasEip1559 = (pop.maxFeePerGas != null || pop.maxPriorityFeePerGas != null);
-        if (pop.gasPrice != null && (pop.type === 2 || hasEip1559)) {
-            assertArgument(false, "eip-1559 transaction do not support gasPrice", "tx", tx);
-        }
-        else if ((pop.type === 0 || pop.type === 1) && hasEip1559) {
-            assertArgument(false, "pre-eip-1559 transaction do not support maxFeePerGas/maxPriorityFeePerGas", "tx", tx);
-        }
-        if ((pop.type === 2 || pop.type == null) && (pop.maxFeePerGas != null && pop.maxPriorityFeePerGas != null)) {
-            // Fully-formed EIP-1559 transaction (skip getFeeData)
-            pop.type = 2;
-        }
-        else if (pop.type === 0 || pop.type === 1) {
-            // Explicit Legacy or EIP-2930 transaction
-            // We need to get fee data to determine things
-            const feeData = await provider.getFeeData();
-            assert(feeData.gasPrice != null, "network does not support gasPrice", "UNSUPPORTED_OPERATION", {
-                operation: "getGasPrice"
-            });
-            // Populate missing gasPrice
-            if (pop.gasPrice == null) {
-                pop.gasPrice = feeData.gasPrice;
-            }
-        }
-        else {
-            // We need to get fee data to determine things
-            const feeData = await provider.getFeeData();
-            if (pop.type == null) {
-                // We need to auto-detect the intended type of this transaction...
-                if (feeData.maxFeePerGas != null && feeData.maxPriorityFeePerGas != null) {
-                    // The network supports EIP-1559!
-                    // Upgrade transaction from null to eip-1559
-                    pop.type = 2;
-                    if (pop.gasPrice != null) {
-                        // Using legacy gasPrice property on an eip-1559 network,
-                        // so use gasPrice as both fee properties
-                        const gasPrice = pop.gasPrice;
-                        delete pop.gasPrice;
-                        pop.maxFeePerGas = gasPrice;
-                        pop.maxPriorityFeePerGas = gasPrice;
-                    }
-                    else {
-                        // Populate missing fee data
-                        if (pop.maxFeePerGas == null) {
-                            pop.maxFeePerGas = feeData.maxFeePerGas;
-                        }
-                        if (pop.maxPriorityFeePerGas == null) {
-                            pop.maxPriorityFeePerGas = feeData.maxPriorityFeePerGas;
-                        }
-                    }
-                }
-                else if (feeData.gasPrice != null) {
-                    // Network doesn't support EIP-1559...
-                    // ...but they are trying to use EIP-1559 properties
-                    assert(!hasEip1559, "network does not support EIP-1559", "UNSUPPORTED_OPERATION", {
-                        operation: "populateTransaction"
-                    });
-                    // Populate missing fee data
-                    if (pop.gasPrice == null) {
-                        pop.gasPrice = feeData.gasPrice;
-                    }
-                    // Explicitly set untyped transaction to legacy
-                    // @TODO: Maybe this shold allow type 1?
-                    pop.type = 0;
-                }
-                else {
-                    // getFeeData has failed us.
-                    assert(false, "failed to get consistent fee data", "UNSUPPORTED_OPERATION", {
-                        operation: "signer.getFeeData"
-                    });
-                }
-            }
-            else if (pop.type === 2 || pop.type === 3) {
-                // Explicitly using EIP-1559 or EIP-4844
-                // Populate missing fee data
-                if (pop.maxFeePerGas == null) {
-                    pop.maxFeePerGas = feeData.maxFeePerGas;
-                }
-                if (pop.maxPriorityFeePerGas == null) {
-                    pop.maxPriorityFeePerGas = feeData.maxPriorityFeePerGas;
-                }
-            }
-        }
-        //@TOOD: Don't await all over the place; save them up for
-        // the end for better batching
-        return await resolveProperties(pop);
-    }
-    async estimateGas(tx) {
-        return checkProvider(this, "estimateGas").estimateGas(await this.populateCall(tx));
-    }
-    async call(tx) {
-        return checkProvider(this, "call").call(await this.populateCall(tx));
-    }
-    async resolveName(name) {
-        const provider = checkProvider(this, "resolveName");
-        return await provider.resolveName(name);
-    }
-    async sendTransaction(tx) {
-        const provider = checkProvider(this, "sendTransaction");
-        const pop = await this.populateTransaction(tx);
-        delete pop.from;
-        const txObj = Transaction.from(pop);
-        return await provider.broadcastTransaction(await this.signTransaction(txObj));
-    }
-}
-/**
- *  A **VoidSigner** is a class deisgned to allow an address to be used
- *  in any API which accepts a Signer, but for which there are no
- *  credentials available to perform any actual signing.
- *
- *  This for example allow impersonating an account for the purpose of
- *  static calls or estimating gas, but does not allow sending transactions.
- */
-class VoidSigner extends AbstractSigner {
-    /**
-     *  The signer address.
-     */
-    address;
-    /**
-     *  Creates a new **VoidSigner** with %%address%% attached to
-     *  %%provider%%.
-     */
-    constructor(address, provider) {
-        super(provider);
-        defineProperties(this, { address });
-    }
-    async getAddress() { return this.address; }
-    connect(provider) {
-        return new VoidSigner(this.address, provider);
-    }
-    #throwUnsupported(suffix, operation) {
-        assert(false, `VoidSigner cannot sign ${suffix}`, "UNSUPPORTED_OPERATION", { operation });
-    }
-    async signTransaction(tx) {
-        this.#throwUnsupported("transactions", "signTransaction");
-    }
-    async signMessage(message) {
-        this.#throwUnsupported("messages", "signMessage");
-    }
-    async signTypedData(domain, types, value) {
-        this.#throwUnsupported("typed-data", "signTypedData");
-    }
-}
-
-/**
  *  There are many awesome community services that provide Ethereum
  *  nodes both for developers just starting out and for large-scale
  *  communities.
@@ -19140,167 +18921,7 @@ const defaultOptions = {
     cacheTimeout: 250,
     pollingInterval: 4000
 };
-// @TODO: Unchecked Signers
-class JsonRpcSigner extends AbstractSigner {
-    address;
-    constructor(provider, address) {
-        super(provider);
-        address = getAddress(address);
-        defineProperties(this, { address });
-    }
-    connect(provider) {
-        assert(false, "cannot reconnect JsonRpcSigner", "UNSUPPORTED_OPERATION", {
-            operation: "signer.connect"
-        });
-    }
-    async getAddress() {
-        return this.address;
-    }
-    // JSON-RPC will automatially fill in nonce, etc. so we just check from
-    async populateTransaction(tx) {
-        return await this.populateCall(tx);
-    }
-    // Returns just the hash of the transaction after sent, which is what
-    // the bare JSON-RPC API does;
-    async sendUncheckedTransaction(_tx) {
-        const tx = deepCopy(_tx);
-        const promises = [];
-        // Make sure the from matches the sender
-        if (tx.from) {
-            const _from = tx.from;
-            promises.push((async () => {
-                const from = await resolveAddress(_from, this.provider);
-                assertArgument(from != null && from.toLowerCase() === this.address.toLowerCase(), "from address mismatch", "transaction", _tx);
-                tx.from = from;
-            })());
-        }
-        else {
-            tx.from = this.address;
-        }
-        // The JSON-RPC for eth_sendTransaction uses 90000 gas; if the user
-        // wishes to use this, it is easy to specify explicitly, otherwise
-        // we look it up for them.
-        if (tx.gasLimit == null) {
-            promises.push((async () => {
-                tx.gasLimit = await this.provider.estimateGas({ ...tx, from: this.address });
-            })());
-        }
-        // The address may be an ENS name or Addressable
-        if (tx.to != null) {
-            const _to = tx.to;
-            promises.push((async () => {
-                tx.to = await resolveAddress(_to, this.provider);
-            })());
-        }
-        // Wait until all of our properties are filled in
-        if (promises.length) {
-            await Promise.all(promises);
-        }
-        const hexTx = this.provider.getRpcTransaction(tx);
-        return this.provider.send("eth_sendTransaction", [hexTx]);
-    }
-    async sendTransaction(tx) {
-        // This cannot be mined any earlier than any recent block
-        const blockNumber = await this.provider.getBlockNumber();
-        // Send the transaction
-        const hash = await this.sendUncheckedTransaction(tx);
-        // Unfortunately, JSON-RPC only provides and opaque transaction hash
-        // for a response, and we need the actual transaction, so we poll
-        // for it; it should show up very quickly
-        return await (new Promise((resolve, reject) => {
-            const timeouts = [1000, 100];
-            let invalids = 0;
-            const checkTx = async () => {
-                try {
-                    // Try getting the transaction
-                    const tx = await this.provider.getTransaction(hash);
-                    if (tx != null) {
-                        resolve(tx.replaceableTransaction(blockNumber));
-                        return;
-                    }
-                }
-                catch (error) {
-                    // If we were cancelled: stop polling.
-                    // If the data is bad: the node returns bad transactions
-                    // If the network changed: calling again will also fail
-                    // If unsupported: likely destroyed
-                    if (isError(error, "CANCELLED") || isError(error, "BAD_DATA") ||
-                        isError(error, "NETWORK_ERROR" )) {
-                        if (error.info == null) {
-                            error.info = {};
-                        }
-                        error.info.sendTransactionHash = hash;
-                        reject(error);
-                        return;
-                    }
-                    // Stop-gap for misbehaving backends; see #4513
-                    if (isError(error, "INVALID_ARGUMENT")) {
-                        invalids++;
-                        if (error.info == null) {
-                            error.info = {};
-                        }
-                        error.info.sendTransactionHash = hash;
-                        if (invalids > 10) {
-                            reject(error);
-                            return;
-                        }
-                    }
-                    // Notify anyone that cares; but we will try again, since
-                    // it is likely an intermittent service error
-                    this.provider.emit("error", makeError("failed to fetch transation after sending (will try again)", "UNKNOWN_ERROR", { error }));
-                }
-                // Wait another 4 seconds
-                this.provider._setTimeout(() => { checkTx(); }, timeouts.pop() || 4000);
-            };
-            checkTx();
-        }));
-    }
-    async signTransaction(_tx) {
-        const tx = deepCopy(_tx);
-        // Make sure the from matches the sender
-        if (tx.from) {
-            const from = await resolveAddress(tx.from, this.provider);
-            assertArgument(from != null && from.toLowerCase() === this.address.toLowerCase(), "from address mismatch", "transaction", _tx);
-            tx.from = from;
-        }
-        else {
-            tx.from = this.address;
-        }
-        const hexTx = this.provider.getRpcTransaction(tx);
-        return await this.provider.send("eth_signTransaction", [hexTx]);
-    }
-    async signMessage(_message) {
-        const message = ((typeof (_message) === "string") ? toUtf8Bytes(_message) : _message);
-        return await this.provider.send("personal_sign", [
-            hexlify(message), this.address.toLowerCase()
-        ]);
-    }
-    async signTypedData(domain, types, _value) {
-        const value = deepCopy(_value);
-        // Populate any ENS names (in-place)
-        const populated = await TypedDataEncoder.resolveNames(domain, types, value, async (value) => {
-            const address = await resolveAddress(value);
-            assertArgument(address != null, "TypedData does not support null address", "value", value);
-            return address;
-        });
-        return await this.provider.send("eth_signTypedData_v4", [
-            this.address.toLowerCase(),
-            JSON.stringify(TypedDataEncoder.getPayload(populated.domain, types, populated.value))
-        ]);
-    }
-    async unlock(password) {
-        return this.provider.send("personal_unlockAccount", [
-            this.address.toLowerCase(), password, null
-        ]);
-    }
-    // https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_sign
-    async _legacySignMessage(_message) {
-        const message = ((typeof (_message) === "string") ? toUtf8Bytes(_message) : _message);
-        return await this.provider.send("eth_sign", [
-            this.address.toLowerCase(), hexlify(message)
-        ]);
-    }
-}
+
 /**
  *  The JsonRpcApiProvider is an abstract class and **MUST** be
  *  sub-classed.
@@ -19823,48 +19444,7 @@ class JsonRpcApiProvider extends AbstractProvider {
         this.#scheduleDrain();
         return promise;
     }
-    /**
-     *  Resolves to the [[Signer]] account for  %%address%% managed by
-     *  the client.
-     *
-     *  If the %%address%% is a number, it is used as an index in the
-     *  the accounts from [[listAccounts]].
-     *
-     *  This can only be used on clients which manage accounts (such as
-     *  Geth with imported account or MetaMask).
-     *
-     *  Throws if the account doesn't exist.
-     */
-    async getSigner(address) {
-        if (address == null) {
-            address = 0;
-        }
-        const accountsPromise = this.send("eth_accounts", []);
-        // Account index
-        if (typeof (address) === "number") {
-            const accounts = (await accountsPromise);
-            if (address >= accounts.length) {
-                throw new Error("no such account");
-            }
-            return new JsonRpcSigner(this, accounts[address]);
-        }
-        const { accounts } = await resolveProperties({
-            network: this.getNetwork(),
-            accounts: accountsPromise
-        });
-        // Account address
-        address = getAddress(address);
-        for (const account of accounts) {
-            if (getAddress(account) === address) {
-                return new JsonRpcSigner(this, address);
-            }
-        }
-        throw new Error("invalid account");
-    }
-    async listAccounts() {
-        const accounts = await this.send("eth_accounts", []);
-        return accounts.map((a) => new JsonRpcSigner(this, a));
-    }
+
     destroy() {
         // Stop processing requests
         if (this.#drainTimer) {
@@ -21652,77 +21232,6 @@ function getDefaultProvider(network, options) {
     return new FallbackProvider(providers, undefined, { quorum });
 }
 
-/**
- *  A **NonceManager** wraps another [[Signer]] and automatically manages
- *  the nonce, ensuring serialized and sequential nonces are used during
- *  transaction.
- */
-class NonceManager extends AbstractSigner {
-    /**
-     *  The Signer being managed.
-     */
-    signer;
-    #noncePromise;
-    #delta;
-    /**
-     *  Creates a new **NonceManager** to manage %%signer%%.
-     */
-    constructor(signer) {
-        super(signer.provider);
-        defineProperties(this, { signer });
-        this.#noncePromise = null;
-        this.#delta = 0;
-    }
-    async getAddress() {
-        return this.signer.getAddress();
-    }
-    connect(provider) {
-        return new NonceManager(this.signer.connect(provider));
-    }
-    async getNonce(blockTag) {
-        if (blockTag === "pending") {
-            if (this.#noncePromise == null) {
-                this.#noncePromise = super.getNonce("pending");
-            }
-            const delta = this.#delta;
-            return (await this.#noncePromise) + delta;
-        }
-        return super.getNonce(blockTag);
-    }
-    /**
-     *  Manually increment the nonce. This may be useful when managng
-     *  offline transactions.
-     */
-    increment() {
-        this.#delta++;
-    }
-    /**
-     *  Resets the nonce, causing the **NonceManager** to reload the current
-     *  nonce from the blockchain on the next transaction.
-     */
-    reset() {
-        this.#delta = 0;
-        this.#noncePromise = null;
-    }
-    async sendTransaction(tx) {
-        const noncePromise = this.getNonce("pending");
-        this.increment();
-        tx = await this.signer.populateTransaction(tx);
-        tx.nonce = await noncePromise;
-        // @TODO: Maybe handle interesting/recoverable errors?
-        // Like don't increment if the tx was certainly not sent
-        return await this.signer.sendTransaction(tx);
-    }
-    signTransaction(tx) {
-        return this.signer.signTransaction(tx);
-    }
-    signMessage(message) {
-        return this.signer.signMessage(message);
-    }
-    signTypedData(domain, types, value) {
-        return this.signer.signTypedData(domain, types, value);
-    }
-}
 
 /**
  *  A **BrowserProvider** is intended to wrap an injected provider which
@@ -21786,37 +21295,6 @@ class BrowserProvider extends JsonRpcApiPollingProvider {
                 break;
         }
         return super.getRpcError(payload, error);
-    }
-    /**
-     *  Resolves to ``true`` if the provider manages the %%address%%.
-     */
-    async hasSigner(address) {
-        if (address == null) {
-            address = 0;
-        }
-        const accounts = await this.send("eth_accounts", []);
-        if (typeof (address) === "number") {
-            return (accounts.length > address);
-        }
-        address = address.toLowerCase();
-        return accounts.filter((a) => (a.toLowerCase() === address)).length !== 0;
-    }
-    async getSigner(address) {
-        if (address == null) {
-            address = 0;
-        }
-        if (!(await this.hasSigner(address))) {
-            try {
-                //const resp = 
-                await this.#request("eth_requestAccounts", []);
-                //console.log("RESP", resp);
-            }
-            catch (error) {
-                const payload = error.payload;
-                throw this.getRpcError(payload, { id: payload.id, error });
-            }
-        }
-        return await super.getSigner(address);
     }
 }
 
@@ -22900,7 +22378,6 @@ var ethers = /*#__PURE__*/Object.freeze({
     __proto__: null,
     AbiCoder: AbiCoder,
     AbstractProvider: AbstractProvider,
-    AbstractSigner: AbstractSigner,
     BaseContract: BaseContract,
     Block: Block,
     BrowserProvider: BrowserProvider,
@@ -22936,7 +22413,6 @@ var ethers = /*#__PURE__*/Object.freeze({
     IpcSocketProvider: IpcSocketProvider,
     JsonRpcApiProvider: JsonRpcApiProvider,
     JsonRpcProvider: JsonRpcProvider,
-    JsonRpcSigner: JsonRpcSigner,
     LangEn: LangEn,
     Log: Log,
     LogDescription: LogDescription,
@@ -22949,7 +22425,6 @@ var ethers = /*#__PURE__*/Object.freeze({
     NamedFragment: NamedFragment,
     Network: Network,
     NetworkPlugin: NetworkPlugin,
-    NonceManager: NonceManager,
     ParamType: ParamType,
     PocketProvider: PocketProvider,
     QuickNodeProvider: QuickNodeProvider,
@@ -22970,7 +22445,6 @@ var ethers = /*#__PURE__*/Object.freeze({
     UndecodedEventLog: UndecodedEventLog,
     UnmanagedSubscriber: UnmanagedSubscriber,
     Utf8ErrorFuncs: Utf8ErrorFuncs,
-    VoidSigner: VoidSigner,
     WebSocketProvider: WebSocketProvider,
     WeiPerEther: WeiPerEther,
     Wordlist: Wordlist,
