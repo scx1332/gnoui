@@ -11874,9 +11874,6 @@ class Network {
         if (typeof (network) === "object") {
             assertArgument(typeof (network.name) === "string" && typeof (network.chainId) === "number", "invalid network object name or chainId", "network", network);
             const custom = new Network((network.name), (network.chainId));
-            if (network.ensAddress || network.ensNetwork != null) {
-                custom.attachPlugin(new EnsPlugin(network.ensAddress, network.ensNetwork));
-            }
             //if ((<any>network).layerOneConnection) {
             //    custom.attachPlugin(new LayerOneConnectionPlugin((<any>network).layerOneConnection));
             //}
@@ -11967,10 +11964,6 @@ function injectCommonNetworks() {
         const func = function () {
             const network = new Network(name, chainId);
             // We use 0 to disable ENS
-            if (options.ensNetwork != null) {
-                network.attachPlugin(new EnsPlugin(null, options.ensNetwork));
-            }
-            network.attachPlugin(new GasCostPlugin());
             (options.plugins || []).forEach((plugin) => {
                 network.attachPlugin(plugin);
             });
