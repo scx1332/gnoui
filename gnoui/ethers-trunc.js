@@ -3193,212 +3193,6 @@ function setBigUint64(view, byteOffset, value, isLE) {
     view.setUint32(byteOffset + h, wh, isLE);
     view.setUint32(byteOffset + l, wl, isLE);
 }
-// Base SHA2 class (RFC 6234)
-class SHA2 extends Hash {
-    constructor(blockLen, outputLen, padOffset, isLE) {
-        super();
-        this.blockLen = blockLen;
-        this.outputLen = outputLen;
-        this.padOffset = padOffset;
-        this.isLE = isLE;
-        this.finished = false;
-        this.length = 0;
-        this.pos = 0;
-        this.destroyed = false;
-        this.buffer = new Uint8Array(blockLen);
-        this.view = createView(this.buffer);
-    }
-    update(data) {
-        exists(this);
-        const { view, buffer, blockLen } = this;
-        data = toBytes(data);
-        const len = data.length;
-        for (let pos = 0; pos < len;) {
-            const take = Math.min(blockLen - this.pos, len - pos);
-            // Fast path: we have at least one block in input, cast it to view and process
-            if (take === blockLen) {
-                const dataView = createView(data);
-                for (; blockLen <= len - pos; pos += blockLen)
-                    this.process(dataView, pos);
-                continue;
-            }
-            buffer.set(data.subarray(pos, pos + take), this.pos);
-            this.pos += take;
-            pos += take;
-            if (this.pos === blockLen) {
-                this.process(view, 0);
-                this.pos = 0;
-            }
-        }
-        this.length += data.length;
-        this.roundClean();
-        return this;
-    }
-    digestInto(out) {
-        exists(this);
-        output(out, this);
-        this.finished = true;
-        // Padding
-        // We can avoid allocation of buffer for padding completely if it
-        // was previously not allocated here. But it won't change performance.
-        const { buffer, view, blockLen, isLE } = this;
-        let { pos } = this;
-        // append the bit '1' to the message
-        buffer[pos++] = 0b10000000;
-        this.buffer.subarray(pos).fill(0);
-        // we have less than padOffset left in buffer, so we cannot put length in current block, need process it and pad again
-        if (this.padOffset > blockLen - pos) {
-            this.process(view, 0);
-            pos = 0;
-        }
-        // Pad until full block byte with zeros
-        for (let i = pos; i < blockLen; i++)
-            buffer[i] = 0;
-        // Note: sha512 requires length to be 128bit integer, but length in JS will overflow before that
-        // You need to write around 2 exabytes (u64_max / 8 / (1024**6)) for this to happen.
-        // So we just write lowest 64 bits of that value.
-        setBigUint64(view, blockLen - 8, BigInt(this.length * 8), isLE);
-        this.process(view, 0);
-        const oview = createView(out);
-        const len = this.outputLen;
-        // NOTE: we do division by 4 later, which should be fused in single op with modulo by JIT
-        if (len % 4)
-            throw new Error('_sha2: outputLen should be aligned to 32bit');
-        const outLen = len / 4;
-        const state = this.get();
-        if (outLen > state.length)
-            throw new Error('_sha2: outputLen bigger than state');
-        for (let i = 0; i < outLen; i++)
-            oview.setUint32(4 * i, state[i], isLE);
-    }
-    digest() {
-        const { buffer, outputLen } = this;
-        this.digestInto(buffer);
-        const res = buffer.slice(0, outputLen);
-        this.destroy();
-        return res;
-    }
-    _cloneInto(to) {
-        to || (to = new this.constructor());
-        to.set(...this.get());
-        const { blockLen, buffer, length, finished, destroyed, pos } = this;
-        to.length = length;
-        to.pos = pos;
-        to.finished = finished;
-        to.destroyed = destroyed;
-        if (length % blockLen)
-            to.buffer.set(buffer);
-        return to;
-    }
-}
-
-// SHA2-256 need to try 2^128 hashes to execute birthday attack.
-// BTC network is doing 2^67 hashes/sec as per early 2023.
-// Choice: a ? b : c
-const Chi = (a, b, c) => (a & b) ^ (~a & c);
-// Majority function, true if any two inpust is true
-const Maj = (a, b, c) => (a & b) ^ (a & c) ^ (b & c);
-// Round constants:
-// first 32 bits of the fractional parts of the cube roots of the first 64 primes 2..311)
-// prettier-ignore
-const SHA256_K = /* @__PURE__ */ new Uint32Array([
-    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
-    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
-    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
-    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
-    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
-    0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
-    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
-    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
-]);
-// Initial state (first 32 bits of the fractional parts of the square roots of the first 8 primes 2..19):
-// prettier-ignore
-const IV = /* @__PURE__ */ new Uint32Array([
-    0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
-]);
-// Temporary buffer, not used to store anything between runs
-// Named this way because it matches specification.
-const SHA256_W = /* @__PURE__ */ new Uint32Array(64);
-class SHA256 extends SHA2 {
-    constructor() {
-        super(64, 32, 8, false);
-        // We cannot use array here since array allows indexing by variable
-        // which means optimizer/compiler cannot use registers.
-        this.A = IV[0] | 0;
-        this.B = IV[1] | 0;
-        this.C = IV[2] | 0;
-        this.D = IV[3] | 0;
-        this.E = IV[4] | 0;
-        this.F = IV[5] | 0;
-        this.G = IV[6] | 0;
-        this.H = IV[7] | 0;
-    }
-    get() {
-        const { A, B, C, D, E, F, G, H } = this;
-        return [A, B, C, D, E, F, G, H];
-    }
-    // prettier-ignore
-    set(A, B, C, D, E, F, G, H) {
-        this.A = A | 0;
-        this.B = B | 0;
-        this.C = C | 0;
-        this.D = D | 0;
-        this.E = E | 0;
-        this.F = F | 0;
-        this.G = G | 0;
-        this.H = H | 0;
-    }
-    process(view, offset) {
-        // Extend the first 16 words into the remaining 48 words w[16..63] of the message schedule array
-        for (let i = 0; i < 16; i++, offset += 4)
-            SHA256_W[i] = view.getUint32(offset, false);
-        for (let i = 16; i < 64; i++) {
-            const W15 = SHA256_W[i - 15];
-            const W2 = SHA256_W[i - 2];
-            const s0 = rotr(W15, 7) ^ rotr(W15, 18) ^ (W15 >>> 3);
-            const s1 = rotr(W2, 17) ^ rotr(W2, 19) ^ (W2 >>> 10);
-            SHA256_W[i] = (s1 + SHA256_W[i - 7] + s0 + SHA256_W[i - 16]) | 0;
-        }
-        // Compression function main loop, 64 rounds
-        let { A, B, C, D, E, F, G, H } = this;
-        for (let i = 0; i < 64; i++) {
-            const sigma1 = rotr(E, 6) ^ rotr(E, 11) ^ rotr(E, 25);
-            const T1 = (H + sigma1 + Chi(E, F, G) + SHA256_K[i] + SHA256_W[i]) | 0;
-            const sigma0 = rotr(A, 2) ^ rotr(A, 13) ^ rotr(A, 22);
-            const T2 = (sigma0 + Maj(A, B, C)) | 0;
-            H = G;
-            G = F;
-            F = E;
-            E = (D + T1) | 0;
-            D = C;
-            C = B;
-            B = A;
-            A = (T1 + T2) | 0;
-        }
-        // Add the compressed chunk to the current hash value
-        A = (A + this.A) | 0;
-        B = (B + this.B) | 0;
-        C = (C + this.C) | 0;
-        D = (D + this.D) | 0;
-        E = (E + this.E) | 0;
-        F = (F + this.F) | 0;
-        G = (G + this.G) | 0;
-        H = (H + this.H) | 0;
-        this.set(A, B, C, D, E, F, G, H);
-    }
-    roundClean() {
-        SHA256_W.fill(0);
-    }
-    destroy() {
-        this.set(0, 0, 0, 0, 0, 0, 0, 0);
-        this.buffer.fill(0);
-    }
-}
-/**
- * SHA2-256 hash function
- * @param message - data that would be hashed
- */
-const sha256$1 = /* @__PURE__ */ wrapConstructor(() => new SHA256());
 
 const U32_MASK64 = /* @__PURE__ */ BigInt(2 ** 32 - 1);
 const _32n = /* @__PURE__ */ BigInt(32);
@@ -3460,194 +3254,6 @@ const u64 = {
 };
 var u64$1 = u64;
 
-// Round contants (first 32 bits of the fractional parts of the cube roots of the first 80 primes 2..409):
-// prettier-ignore
-const [SHA512_Kh, SHA512_Kl] = /* @__PURE__ */ (() => u64$1.split([
-    '0x428a2f98d728ae22', '0x7137449123ef65cd', '0xb5c0fbcfec4d3b2f', '0xe9b5dba58189dbbc',
-    '0x3956c25bf348b538', '0x59f111f1b605d019', '0x923f82a4af194f9b', '0xab1c5ed5da6d8118',
-    '0xd807aa98a3030242', '0x12835b0145706fbe', '0x243185be4ee4b28c', '0x550c7dc3d5ffb4e2',
-    '0x72be5d74f27b896f', '0x80deb1fe3b1696b1', '0x9bdc06a725c71235', '0xc19bf174cf692694',
-    '0xe49b69c19ef14ad2', '0xefbe4786384f25e3', '0x0fc19dc68b8cd5b5', '0x240ca1cc77ac9c65',
-    '0x2de92c6f592b0275', '0x4a7484aa6ea6e483', '0x5cb0a9dcbd41fbd4', '0x76f988da831153b5',
-    '0x983e5152ee66dfab', '0xa831c66d2db43210', '0xb00327c898fb213f', '0xbf597fc7beef0ee4',
-    '0xc6e00bf33da88fc2', '0xd5a79147930aa725', '0x06ca6351e003826f', '0x142929670a0e6e70',
-    '0x27b70a8546d22ffc', '0x2e1b21385c26c926', '0x4d2c6dfc5ac42aed', '0x53380d139d95b3df',
-    '0x650a73548baf63de', '0x766a0abb3c77b2a8', '0x81c2c92e47edaee6', '0x92722c851482353b',
-    '0xa2bfe8a14cf10364', '0xa81a664bbc423001', '0xc24b8b70d0f89791', '0xc76c51a30654be30',
-    '0xd192e819d6ef5218', '0xd69906245565a910', '0xf40e35855771202a', '0x106aa07032bbd1b8',
-    '0x19a4c116b8d2d0c8', '0x1e376c085141ab53', '0x2748774cdf8eeb99', '0x34b0bcb5e19b48a8',
-    '0x391c0cb3c5c95a63', '0x4ed8aa4ae3418acb', '0x5b9cca4f7763e373', '0x682e6ff3d6b2b8a3',
-    '0x748f82ee5defb2fc', '0x78a5636f43172f60', '0x84c87814a1f0ab72', '0x8cc702081a6439ec',
-    '0x90befffa23631e28', '0xa4506cebde82bde9', '0xbef9a3f7b2c67915', '0xc67178f2e372532b',
-    '0xca273eceea26619c', '0xd186b8c721c0c207', '0xeada7dd6cde0eb1e', '0xf57d4f7fee6ed178',
-    '0x06f067aa72176fba', '0x0a637dc5a2c898a6', '0x113f9804bef90dae', '0x1b710b35131c471b',
-    '0x28db77f523047d84', '0x32caab7b40c72493', '0x3c9ebe0a15c9bebc', '0x431d67c49c100d4c',
-    '0x4cc5d4becb3e42b6', '0x597f299cfc657e2a', '0x5fcb6fab3ad6faec', '0x6c44198c4a475817'
-].map(n => BigInt(n))))();
-// Temporary buffer, not used to store anything between runs
-const SHA512_W_H = /* @__PURE__ */ new Uint32Array(80);
-const SHA512_W_L = /* @__PURE__ */ new Uint32Array(80);
-class SHA512 extends SHA2 {
-    constructor() {
-        super(128, 64, 16, false);
-        // We cannot use array here since array allows indexing by variable which means optimizer/compiler cannot use registers.
-        // Also looks cleaner and easier to verify with spec.
-        // Initial state (first 32 bits of the fractional parts of the square roots of the first 8 primes 2..19):
-        // h -- high 32 bits, l -- low 32 bits
-        this.Ah = 0x6a09e667 | 0;
-        this.Al = 0xf3bcc908 | 0;
-        this.Bh = 0xbb67ae85 | 0;
-        this.Bl = 0x84caa73b | 0;
-        this.Ch = 0x3c6ef372 | 0;
-        this.Cl = 0xfe94f82b | 0;
-        this.Dh = 0xa54ff53a | 0;
-        this.Dl = 0x5f1d36f1 | 0;
-        this.Eh = 0x510e527f | 0;
-        this.El = 0xade682d1 | 0;
-        this.Fh = 0x9b05688c | 0;
-        this.Fl = 0x2b3e6c1f | 0;
-        this.Gh = 0x1f83d9ab | 0;
-        this.Gl = 0xfb41bd6b | 0;
-        this.Hh = 0x5be0cd19 | 0;
-        this.Hl = 0x137e2179 | 0;
-    }
-    // prettier-ignore
-    get() {
-        const { Ah, Al, Bh, Bl, Ch, Cl, Dh, Dl, Eh, El, Fh, Fl, Gh, Gl, Hh, Hl } = this;
-        return [Ah, Al, Bh, Bl, Ch, Cl, Dh, Dl, Eh, El, Fh, Fl, Gh, Gl, Hh, Hl];
-    }
-    // prettier-ignore
-    set(Ah, Al, Bh, Bl, Ch, Cl, Dh, Dl, Eh, El, Fh, Fl, Gh, Gl, Hh, Hl) {
-        this.Ah = Ah | 0;
-        this.Al = Al | 0;
-        this.Bh = Bh | 0;
-        this.Bl = Bl | 0;
-        this.Ch = Ch | 0;
-        this.Cl = Cl | 0;
-        this.Dh = Dh | 0;
-        this.Dl = Dl | 0;
-        this.Eh = Eh | 0;
-        this.El = El | 0;
-        this.Fh = Fh | 0;
-        this.Fl = Fl | 0;
-        this.Gh = Gh | 0;
-        this.Gl = Gl | 0;
-        this.Hh = Hh | 0;
-        this.Hl = Hl | 0;
-    }
-    process(view, offset) {
-        // Extend the first 16 words into the remaining 64 words w[16..79] of the message schedule array
-        for (let i = 0; i < 16; i++, offset += 4) {
-            SHA512_W_H[i] = view.getUint32(offset);
-            SHA512_W_L[i] = view.getUint32((offset += 4));
-        }
-        for (let i = 16; i < 80; i++) {
-            // s0 := (w[i-15] rightrotate 1) xor (w[i-15] rightrotate 8) xor (w[i-15] rightshift 7)
-            const W15h = SHA512_W_H[i - 15] | 0;
-            const W15l = SHA512_W_L[i - 15] | 0;
-            const s0h = u64$1.rotrSH(W15h, W15l, 1) ^ u64$1.rotrSH(W15h, W15l, 8) ^ u64$1.shrSH(W15h, W15l, 7);
-            const s0l = u64$1.rotrSL(W15h, W15l, 1) ^ u64$1.rotrSL(W15h, W15l, 8) ^ u64$1.shrSL(W15h, W15l, 7);
-            // s1 := (w[i-2] rightrotate 19) xor (w[i-2] rightrotate 61) xor (w[i-2] rightshift 6)
-            const W2h = SHA512_W_H[i - 2] | 0;
-            const W2l = SHA512_W_L[i - 2] | 0;
-            const s1h = u64$1.rotrSH(W2h, W2l, 19) ^ u64$1.rotrBH(W2h, W2l, 61) ^ u64$1.shrSH(W2h, W2l, 6);
-            const s1l = u64$1.rotrSL(W2h, W2l, 19) ^ u64$1.rotrBL(W2h, W2l, 61) ^ u64$1.shrSL(W2h, W2l, 6);
-            // SHA256_W[i] = s0 + s1 + SHA256_W[i - 7] + SHA256_W[i - 16];
-            const SUMl = u64$1.add4L(s0l, s1l, SHA512_W_L[i - 7], SHA512_W_L[i - 16]);
-            const SUMh = u64$1.add4H(SUMl, s0h, s1h, SHA512_W_H[i - 7], SHA512_W_H[i - 16]);
-            SHA512_W_H[i] = SUMh | 0;
-            SHA512_W_L[i] = SUMl | 0;
-        }
-        let { Ah, Al, Bh, Bl, Ch, Cl, Dh, Dl, Eh, El, Fh, Fl, Gh, Gl, Hh, Hl } = this;
-        // Compression function main loop, 80 rounds
-        for (let i = 0; i < 80; i++) {
-            // S1 := (e rightrotate 14) xor (e rightrotate 18) xor (e rightrotate 41)
-            const sigma1h = u64$1.rotrSH(Eh, El, 14) ^ u64$1.rotrSH(Eh, El, 18) ^ u64$1.rotrBH(Eh, El, 41);
-            const sigma1l = u64$1.rotrSL(Eh, El, 14) ^ u64$1.rotrSL(Eh, El, 18) ^ u64$1.rotrBL(Eh, El, 41);
-            //const T1 = (H + sigma1 + Chi(E, F, G) + SHA256_K[i] + SHA256_W[i]) | 0;
-            const CHIh = (Eh & Fh) ^ (~Eh & Gh);
-            const CHIl = (El & Fl) ^ (~El & Gl);
-            // T1 = H + sigma1 + Chi(E, F, G) + SHA512_K[i] + SHA512_W[i]
-            // prettier-ignore
-            const T1ll = u64$1.add5L(Hl, sigma1l, CHIl, SHA512_Kl[i], SHA512_W_L[i]);
-            const T1h = u64$1.add5H(T1ll, Hh, sigma1h, CHIh, SHA512_Kh[i], SHA512_W_H[i]);
-            const T1l = T1ll | 0;
-            // S0 := (a rightrotate 28) xor (a rightrotate 34) xor (a rightrotate 39)
-            const sigma0h = u64$1.rotrSH(Ah, Al, 28) ^ u64$1.rotrBH(Ah, Al, 34) ^ u64$1.rotrBH(Ah, Al, 39);
-            const sigma0l = u64$1.rotrSL(Ah, Al, 28) ^ u64$1.rotrBL(Ah, Al, 34) ^ u64$1.rotrBL(Ah, Al, 39);
-            const MAJh = (Ah & Bh) ^ (Ah & Ch) ^ (Bh & Ch);
-            const MAJl = (Al & Bl) ^ (Al & Cl) ^ (Bl & Cl);
-            Hh = Gh | 0;
-            Hl = Gl | 0;
-            Gh = Fh | 0;
-            Gl = Fl | 0;
-            Fh = Eh | 0;
-            Fl = El | 0;
-            ({ h: Eh, l: El } = u64$1.add(Dh | 0, Dl | 0, T1h | 0, T1l | 0));
-            Dh = Ch | 0;
-            Dl = Cl | 0;
-            Ch = Bh | 0;
-            Cl = Bl | 0;
-            Bh = Ah | 0;
-            Bl = Al | 0;
-            const All = u64$1.add3L(T1l, sigma0l, MAJl);
-            Ah = u64$1.add3H(All, T1h, sigma0h, MAJh);
-            Al = All | 0;
-        }
-        // Add the compressed chunk to the current hash value
-        ({ h: Ah, l: Al } = u64$1.add(this.Ah | 0, this.Al | 0, Ah | 0, Al | 0));
-        ({ h: Bh, l: Bl } = u64$1.add(this.Bh | 0, this.Bl | 0, Bh | 0, Bl | 0));
-        ({ h: Ch, l: Cl } = u64$1.add(this.Ch | 0, this.Cl | 0, Ch | 0, Cl | 0));
-        ({ h: Dh, l: Dl } = u64$1.add(this.Dh | 0, this.Dl | 0, Dh | 0, Dl | 0));
-        ({ h: Eh, l: El } = u64$1.add(this.Eh | 0, this.El | 0, Eh | 0, El | 0));
-        ({ h: Fh, l: Fl } = u64$1.add(this.Fh | 0, this.Fl | 0, Fh | 0, Fl | 0));
-        ({ h: Gh, l: Gl } = u64$1.add(this.Gh | 0, this.Gl | 0, Gh | 0, Gl | 0));
-        ({ h: Hh, l: Hl } = u64$1.add(this.Hh | 0, this.Hl | 0, Hh | 0, Hl | 0));
-        this.set(Ah, Al, Bh, Bl, Ch, Cl, Dh, Dl, Eh, El, Fh, Fl, Gh, Gl, Hh, Hl);
-    }
-    roundClean() {
-        SHA512_W_H.fill(0);
-        SHA512_W_L.fill(0);
-    }
-    destroy() {
-        this.buffer.fill(0);
-        this.set(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-    }
-}
-const sha512$1 = /* @__PURE__ */ wrapConstructor(() => new SHA512());
-
-/* Browser Crypto Shims */
-function getGlobal$1() {
-    if (typeof self !== 'undefined') {
-        return self;
-    }
-    if (typeof window !== 'undefined') {
-        return window;
-    }
-    if (typeof global !== 'undefined') {
-        return global;
-    }
-    throw new Error('unable to locate global object');
-}
-const anyGlobal = getGlobal$1();
-const crypto = anyGlobal.crypto || anyGlobal.msCrypto;
-function createHash(algo) {
-    switch (algo) {
-        case "sha256": return sha256$1.create();
-        case "sha512": return sha512$1.create();
-    }
-    assertArgument(false, "invalid hashing algorithm name", "algorithm", algo);
-}
-function createHmac(_algo, key) {
-    const algo = ({ sha256: sha256$1, sha512: sha512$1 }[_algo]);
-    assertArgument(algo != null, "invalid hmac algorithm", "algorithm", _algo);
-    return hmac.create(algo, key);
-}
-function pbkdf2Sync(password, salt, iterations, keylen, _algo) {
-    const algo = ({ sha256: sha256$1, sha512: sha512$1 }[_algo]);
-    assertArgument(algo != null, "invalid pbkdf2 algorithm", "algorithm", _algo);
-    return pbkdf2$1(algo, password, salt, { c: iterations, dkLen: keylen });
-}
 function randomBytes$1(length) {
     assert(crypto != null, "platform does not support secure random numbers", "UNSUPPORTED_OPERATION", {
         operation: "randomBytes"
@@ -3931,127 +3537,6 @@ Object.freeze(randomBytes);
 // RFC 7914 Scrypt KDF
 // Left rotate for uint32
 const rotl = (a, b) => (a << b) | (a >>> (32 - b));
-// The main Scrypt loop: uses Salsa extensively.
-// Six versions of the function were tried, this is the fastest one.
-// prettier-ignore
-function XorAndSalsa(prev, pi, input, ii, out, oi) {
-    // Based on https://cr.yp.to/salsa20.html
-    // Xor blocks
-    let y00 = prev[pi++] ^ input[ii++], y01 = prev[pi++] ^ input[ii++];
-    let y02 = prev[pi++] ^ input[ii++], y03 = prev[pi++] ^ input[ii++];
-    let y04 = prev[pi++] ^ input[ii++], y05 = prev[pi++] ^ input[ii++];
-    let y06 = prev[pi++] ^ input[ii++], y07 = prev[pi++] ^ input[ii++];
-    let y08 = prev[pi++] ^ input[ii++], y09 = prev[pi++] ^ input[ii++];
-    let y10 = prev[pi++] ^ input[ii++], y11 = prev[pi++] ^ input[ii++];
-    let y12 = prev[pi++] ^ input[ii++], y13 = prev[pi++] ^ input[ii++];
-    let y14 = prev[pi++] ^ input[ii++], y15 = prev[pi++] ^ input[ii++];
-    // Save state to temporary variables (salsa)
-    let x00 = y00, x01 = y01, x02 = y02, x03 = y03, x04 = y04, x05 = y05, x06 = y06, x07 = y07, x08 = y08, x09 = y09, x10 = y10, x11 = y11, x12 = y12, x13 = y13, x14 = y14, x15 = y15;
-    // Main loop (salsa)
-    for (let i = 0; i < 8; i += 2) {
-        x04 ^= rotl(x00 + x12 | 0, 7);
-        x08 ^= rotl(x04 + x00 | 0, 9);
-        x12 ^= rotl(x08 + x04 | 0, 13);
-        x00 ^= rotl(x12 + x08 | 0, 18);
-        x09 ^= rotl(x05 + x01 | 0, 7);
-        x13 ^= rotl(x09 + x05 | 0, 9);
-        x01 ^= rotl(x13 + x09 | 0, 13);
-        x05 ^= rotl(x01 + x13 | 0, 18);
-        x14 ^= rotl(x10 + x06 | 0, 7);
-        x02 ^= rotl(x14 + x10 | 0, 9);
-        x06 ^= rotl(x02 + x14 | 0, 13);
-        x10 ^= rotl(x06 + x02 | 0, 18);
-        x03 ^= rotl(x15 + x11 | 0, 7);
-        x07 ^= rotl(x03 + x15 | 0, 9);
-        x11 ^= rotl(x07 + x03 | 0, 13);
-        x15 ^= rotl(x11 + x07 | 0, 18);
-        x01 ^= rotl(x00 + x03 | 0, 7);
-        x02 ^= rotl(x01 + x00 | 0, 9);
-        x03 ^= rotl(x02 + x01 | 0, 13);
-        x00 ^= rotl(x03 + x02 | 0, 18);
-        x06 ^= rotl(x05 + x04 | 0, 7);
-        x07 ^= rotl(x06 + x05 | 0, 9);
-        x04 ^= rotl(x07 + x06 | 0, 13);
-        x05 ^= rotl(x04 + x07 | 0, 18);
-        x11 ^= rotl(x10 + x09 | 0, 7);
-        x08 ^= rotl(x11 + x10 | 0, 9);
-        x09 ^= rotl(x08 + x11 | 0, 13);
-        x10 ^= rotl(x09 + x08 | 0, 18);
-        x12 ^= rotl(x15 + x14 | 0, 7);
-        x13 ^= rotl(x12 + x15 | 0, 9);
-        x14 ^= rotl(x13 + x12 | 0, 13);
-        x15 ^= rotl(x14 + x13 | 0, 18);
-    }
-    // Write output (salsa)
-    out[oi++] = (y00 + x00) | 0;
-    out[oi++] = (y01 + x01) | 0;
-    out[oi++] = (y02 + x02) | 0;
-    out[oi++] = (y03 + x03) | 0;
-    out[oi++] = (y04 + x04) | 0;
-    out[oi++] = (y05 + x05) | 0;
-    out[oi++] = (y06 + x06) | 0;
-    out[oi++] = (y07 + x07) | 0;
-    out[oi++] = (y08 + x08) | 0;
-    out[oi++] = (y09 + x09) | 0;
-    out[oi++] = (y10 + x10) | 0;
-    out[oi++] = (y11 + x11) | 0;
-    out[oi++] = (y12 + x12) | 0;
-    out[oi++] = (y13 + x13) | 0;
-    out[oi++] = (y14 + x14) | 0;
-    out[oi++] = (y15 + x15) | 0;
-}
-function BlockMix(input, ii, out, oi, r) {
-    // The block B is r 128-byte chunks (which is equivalent of 2r 64-byte chunks)
-    let head = oi + 0;
-    let tail = oi + 16 * r;
-    for (let i = 0; i < 16; i++)
-        out[tail + i] = input[ii + (2 * r - 1) * 16 + i]; // X ← B[2r−1]
-    for (let i = 0; i < r; i++, head += 16, ii += 16) {
-        // We write odd & even Yi at same time. Even: 0bXXXXX0 Odd:  0bXXXXX1
-        XorAndSalsa(out, tail, input, ii, out, head); // head[i] = Salsa(blockIn[2*i] ^ tail[i-1])
-        if (i > 0)
-            tail += 16; // First iteration overwrites tmp value in tail
-        XorAndSalsa(out, head, input, (ii += 16), out, tail); // tail[i] = Salsa(blockIn[2*i+1] ^ head[i])
-    }
-}
-
-const _sha256 = function (data) {
-    return createHash("sha256").update(data).digest();
-};
-
-let __sha256 = _sha256;
-
-let locked256 = false, locked512 = false;
-/**
- *  Compute the cryptographic SHA2-256 hash of %%data%%.
- *
- *  @_docloc: api/crypto:Hash Functions
- *  @returns DataHexstring
- *
- *  @example:
- *    sha256("0x")
- *    //_result:
- *
- *    sha256("0x1337")
- *    //_result:
- *
- *    sha256(new Uint8Array([ 0x13, 0x37 ]))
- *    //_result:
- *
- */
-function sha256(_data) {
-    const data = getBytes(_data, "data");
-    return hexlify(__sha256(data));
-}
-sha256._ = _sha256;
-sha256.lock = function () { locked256 = true; };
-sha256.register = function (func) {
-    if (locked256) {
-        throw new Error("sha256 is locked");
-    }
-    __sha256 = func;
-};
-Object.freeze(sha256);
 
 
 /*! noble-curves - MIT License (c) 2022 Paul Miller (paulmillr.com) */
@@ -7523,14 +7008,6 @@ const BN_28 = BigInt(28);
 const BN_35 = BigInt(35);
 const BN_MAX_UINT = BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 const BLOB_SIZE = 4096 * 32;
-function getVersionedHash(version, hash) {
-    let versioned = version.toString(16);
-    while (versioned.length < 2) {
-        versioned = "0" + versioned;
-    }
-    versioned += sha256(hash).substring(4);
-    return "0x" + versioned;
-}
 function handleAddress(value) {
     if (value === "0x") {
         return null;
@@ -8064,108 +7541,6 @@ class Transaction {
         }
         return value;
     }
-    set maxFeePerBlobGas(value) {
-        this.#maxFeePerBlobGas = (value == null) ? null : getBigInt(value, "maxFeePerBlobGas");
-    }
-    /**
-     *  The BLOb versioned hashes for Cancun transactions.
-     */
-    get blobVersionedHashes() {
-        // @TODO: Mutation is inconsistent; if unset, the returned value
-        // cannot mutate the object, if set it can
-        let value = this.#blobVersionedHashes;
-        if (value == null && this.type === 3) {
-            return [];
-        }
-        return value;
-    }
-    set blobVersionedHashes(value) {
-        if (value != null) {
-            assertArgument(Array.isArray(value), "blobVersionedHashes must be an Array", "value", value);
-            value = value.slice();
-            for (let i = 0; i < value.length; i++) {
-                assertArgument(isHexString(value[i], 32), "invalid blobVersionedHash", `value[${i}]`, value[i]);
-            }
-        }
-        this.#blobVersionedHashes = value;
-    }
-    /**
-     *  The BLObs for the Transaction, if any.
-     *
-     *  If ``blobs`` is non-``null``, then the [[seriailized]]
-     *  will return the network formatted sidecar, otherwise it
-     *  will return the standard [[link-eip-2718]] payload. The
-     *  [[unsignedSerialized]] is unaffected regardless.
-     *
-     *  When setting ``blobs``, either fully valid [[Blob]] objects
-     *  may be specified (i.e. correctly padded, with correct
-     *  committments and proofs) or a raw [[BytesLike]] may
-     *  be provided.
-     *
-     *  If raw [[BytesLike]] are provided, the [[kzg]] property **must**
-     *  be already set. The blob will be correctly padded and the
-     *  [[KzgLibrary]] will be used to compute the committment and
-     *  proof for the blob.
-     *
-     *  A BLOb is a sequence of field elements, each of which must
-     *  be within the BLS field modulo, so some additional processing
-     *  may be required to encode arbitrary data to ensure each 32 byte
-     *  field is within the valid range.
-     *
-     *  Setting this automatically populates [[blobVersionedHashes]],
-     *  overwriting any existing values. Setting this to ``null``
-     *  does **not** remove the [[blobVersionedHashes]], leaving them
-     *  present.
-     */
-    get blobs() {
-        if (this.#blobs == null) {
-            return null;
-        }
-        return this.#blobs.map((b) => Object.assign({}, b));
-    }
-    set blobs(_blobs) {
-        if (_blobs == null) {
-            this.#blobs = null;
-            return;
-        }
-        const blobs = [];
-        const versionedHashes = [];
-        for (let i = 0; i < _blobs.length; i++) {
-            const blob = _blobs[i];
-            if (isBytesLike(blob)) {
-                assert(this.#kzg, "adding a raw blob requires a KZG library", "UNSUPPORTED_OPERATION", {
-                    operation: "set blobs()"
-                });
-                let data = getBytes(blob);
-                assertArgument(data.length <= BLOB_SIZE, "blob is too large", `blobs[${i}]`, blob);
-                // Pad blob if necessary
-                if (data.length !== BLOB_SIZE) {
-                    const padded = new Uint8Array(BLOB_SIZE);
-                    padded.set(data);
-                    data = padded;
-                }
-                const commit = this.#kzg.blobToKzgCommitment(data);
-                const proof = hexlify(this.#kzg.computeBlobKzgProof(data, commit));
-                blobs.push({
-                    data: hexlify(data),
-                    commitment: hexlify(commit),
-                    proof
-                });
-                versionedHashes.push(getVersionedHash(1, commit));
-            }
-            else {
-                const commit = hexlify(blob.commitment);
-                blobs.push({
-                    data: hexlify(blob.data),
-                    commitment: commit,
-                    proof: hexlify(blob.proof)
-                });
-                versionedHashes.push(getVersionedHash(1, commit));
-            }
-        }
-        this.#blobs = blobs;
-        this.#blobVersionedHashes = versionedHashes;
-    }
     get kzg() { return this.#kzg; }
     set kzg(kzg) {
         this.#kzg = kzg;
@@ -8187,8 +7562,6 @@ class Transaction {
         this.#sig = null;
         this.#accessList = null;
         this.#maxFeePerBlobGas = null;
-        this.#blobVersionedHashes = null;
-        this.#blobs = null;
         this.#kzg = null;
     }
     /**
@@ -8624,18 +7997,6 @@ function solidityPacked(types, values) {
  */
 function solidityPackedKeccak256(types, values) {
     return keccak256(solidityPacked(types, values));
-}
-/**
- *   Computes the [[link-solc-packed]] [[sha256]] hash of %%values%%
- *   respectively to their %%types%%.
- *
- *   @example:
- *       addr = "0x8ba1f109551bd432803012645ac136ddd64dba72"
- *       solidityPackedSha256([ "address", "uint" ], [ addr, 45 ]);
- *       //_result:
- */
-function solidityPackedSha256(types, values) {
-    return sha256(solidityPacked(types, values));
 }
 
 //import { TypedDataDomain, TypedDataField } from "@ethersproject/providerabstract-signer";
@@ -11900,19 +11261,8 @@ function copyRequest(req) {
     if ("customData" in req) {
         result.customData = req.customData;
     }
-    if ("blobVersionedHashes" in req && req.blobVersionedHashes) {
-        result.blobVersionedHashes = req.blobVersionedHashes.slice();
-    }
     if ("kzg" in req) {
         result.kzg = req.kzg;
-    }
-    if ("blobs" in req && req.blobs) {
-        result.blobs = req.blobs.map((b) => {
-            if (isBytesLike(b)) {
-                return hexlify(b);
-            }
-            return Object.assign({}, b);
-        });
     }
     return result;
 }
@@ -14673,119 +14023,7 @@ class GasCostPlugin extends NetworkPlugin {
         return new GasCostPlugin(this.effectiveBlock, this);
     }
 }
-/**
- *  An **EnsPlugin** allows a [[Network]] to specify the ENS Registry
- *  Contract address and the target network to use when using that
- *  contract.
- *
- *  Various testnets have their own instance of the contract to use, but
- *  in general, the mainnet instance supports multi-chain addresses and
- *  should be used.
- */
-class EnsPlugin extends NetworkPlugin {
-    /**
-     *  The ENS Registrty Contract address.
-     */
-    address;
-    /**
-     *  The chain ID that the ENS contract lives on.
-     */
-    targetNetwork;
-    /**
-     *  Creates a new **EnsPlugin** connected to %%address%% on the
-     *  %%targetNetwork%%. The default ENS address and mainnet is used
-     *  if unspecified.
-     */
-    constructor(address, targetNetwork) {
-        super("org.ethers.plugins.network.Ens");
-        defineProperties(this, {
-            address: (address || EnsAddress),
-            targetNetwork: ((targetNetwork == null) ? 1 : targetNetwork)
-        });
-    }
-    clone() {
-        return new EnsPlugin(this.address, this.targetNetwork);
-    }
-}
-/**
- *  A **FeeDataNetworkPlugin** allows a network to provide and alternate
- *  means to specify its fee data.
- *
- *  For example, a network which does not support [[link-eip-1559]] may
- *  choose to use a Gas Station site to approximate the gas price.
- */
-class FeeDataNetworkPlugin extends NetworkPlugin {
-    #feeDataFunc;
-    /**
-     *  The fee data function provided to the constructor.
-     */
-    get feeDataFunc() {
-        return this.#feeDataFunc;
-    }
-    /**
-     *  Creates a new **FeeDataNetworkPlugin**.
-     */
-    constructor(feeDataFunc) {
-        super("org.ethers.plugins.network.FeeData");
-        this.#feeDataFunc = feeDataFunc;
-    }
-    /**
-     *  Resolves to the fee data.
-     */
-    async getFeeData(provider) {
-        return await this.#feeDataFunc(provider);
-    }
-    clone() {
-        return new FeeDataNetworkPlugin(this.#feeDataFunc);
-    }
-}
-class FetchUrlFeeDataNetworkPlugin extends NetworkPlugin {
-    #url;
-    #processFunc;
-    /**
-     *  The URL to initialize the FetchRequest with in %%processFunc%%.
-     */
-    get url() { return this.#url; }
-    /**
-     *  The callback to use when computing the FeeData.
-     */
-    get processFunc() { return this.#processFunc; }
-    /**
-     *  Creates a new **FetchUrlFeeDataNetworkPlugin** which will
-     *  be used when computing the fee data for the network.
-     */
-    constructor(url, processFunc) {
-        super("org.ethers.plugins.network.FetchUrlFeeDataPlugin");
-        this.#url = url;
-        this.#processFunc = processFunc;
-    }
-    // We are immutable, so we can serve as our own clone
-    clone() { return this; }
-}
-/*
-export class CustomBlockNetworkPlugin extends NetworkPlugin {
-    readonly #blockFunc: (provider: Provider, block: BlockParams<string>) => Block<string>;
-    readonly #blockWithTxsFunc: (provider: Provider, block: BlockParams<TransactionResponseParams>) => Block<TransactionResponse>;
 
-    constructor(blockFunc: (provider: Provider, block: BlockParams<string>) => Block<string>, blockWithTxsFunc: (provider: Provider, block: BlockParams<TransactionResponseParams>) => Block<TransactionResponse>) {
-        super("org.ethers.network-plugins.custom-block");
-        this.#blockFunc = blockFunc;
-        this.#blockWithTxsFunc = blockWithTxsFunc;
-    }
-
-    async getBlock(provider: Provider, block: BlockParams<string>): Promise<Block<string>> {
-        return await this.#blockFunc(provider, block);
-    }
-
-    async getBlockions(provider: Provider, block: BlockParams<TransactionResponseParams>): Promise<Block<TransactionResponse>> {
-        return await this.#blockWithTxsFunc(provider, block);
-    }
-
-    clone(): CustomBlockNetworkPlugin {
-        return new CustomBlockNetworkPlugin(this.#blockFunc, this.#blockWithTxsFunc);
-    }
-}
-*/
 
 /**
  *  A **Network** encapsulates the various properties required to
@@ -18598,105 +17836,6 @@ function isWebSocketLike(value) {
     return (value && typeof (value.send) === "function" &&
         typeof (value.close) === "function");
 }
-const Testnets = "goerli kovan sepolia classicKotti optimism-goerli arbitrum-goerli matic-mumbai bnbt".split(" ");
-/**
- *  Returns a default provider for %%network%%.
- *
- *  If %%network%% is a [[WebSocketLike]] or string that begins with
- *  ``"ws:"`` or ``"wss:"``, a [[WebSocketProvider]] is returned backed
- *  by that WebSocket or URL.
- *
- *  If %%network%% is a string that begins with ``"HTTP:"`` or ``"HTTPS:"``,
- *  a [[JsonRpcProvider]] is returned connected to that URL.
- *
- *  Otherwise, a default provider is created backed by well-known public
- *  Web3 backends (such as [[link-infura]]) using community-provided API
- *  keys.
- *
- *  The %%options%% allows specifying custom API keys per backend (setting
- *  an API key to ``"-"`` will omit that provider) and ``options.exclusive``
- *  can be set to either a backend name or and array of backend names, which
- *  will whitelist **only** those backends.
- *
- *  Current backend strings supported are:
- *  - ``"alchemy"``
- *  - ``"ankr"``
- *  - ``"cloudflare"``
- *  - ``"chainstack"``
- *  - ``"etherscan"``
- *  - ``"infura"``
- *  - ``"publicPolygon"``
- *  - ``"quicknode"``
- *
- *  @example:
- *    // Connect to a local Geth node
- *    provider = getDefaultProvider("http://localhost:8545/");
- *
- *    // Connect to Ethereum mainnet with any current and future
- *    // third-party services available
- *    provider = getDefaultProvider("mainnet");
- *
- *    // Connect to Polygon, but only allow Etherscan and
- *    // INFURA and use "MY_API_KEY" in calls to Etherscan.
- *    provider = getDefaultProvider("matic", {
- *      etherscan: "MY_API_KEY",
- *      exclusive: [ "etherscan", "infura" ]
- *    });
- */
-function getDefaultProvider(network, options) {
-    if (options == null) {
-        options = {};
-    }
-    const allowService = (name) => {
-        if (options[name] === "-") {
-            return false;
-        }
-        if (typeof (options.exclusive) === "string") {
-            return (name === options.exclusive);
-        }
-        if (Array.isArray(options.exclusive)) {
-            return (options.exclusive.indexOf(name) !== -1);
-        }
-        return true;
-    };
-    if (typeof (network) === "string" && network.match(/^https?:/)) {
-        return new JsonRpcProvider(network);
-    }
-    if (typeof (network) === "string" && network.match(/^wss?:/) || isWebSocketLike(network)) {
-        return new WebSocketProvider(network);
-    }
-    // Get the network and name, if possible
-    let staticNetwork = null;
-    try {
-        staticNetwork = Network.from(network);
-    }
-    catch (error) { }
-    const providers = [];
-    assert(providers.length, "unsupported default network", "UNSUPPORTED_OPERATION", {
-        operation: "getDefaultProvider"
-    });
-    // No need for a FallbackProvider
-    if (providers.length === 1) {
-        return providers[0];
-    }
-    // We use the floor because public third-party providers can be unreliable,
-    // so a low number of providers with a large quorum will fail too often
-    let quorum = Math.floor(providers.length / 2);
-    if (quorum > 2) {
-        quorum = 2;
-    }
-    // Testnets don't need as strong a security gaurantee and speed is
-    // more useful during testing
-    if (staticNetwork && Testnets.indexOf(staticNetwork.name) !== -1) {
-        quorum = 1;
-    }
-    // Provided override qorum takes priority
-    if (options && options.quorum) {
-        quorum = options.quorum;
-    }
-    return new FallbackProvider(providers, undefined, { quorum });
-}
-
 
 /**
  *  A **BrowserProvider** is intended to wrap an injected provider which
@@ -18863,8 +18002,6 @@ class PocketProvider extends JsonRpcProvider {
         return (this.applicationId === defaultApplicationId);
     }
 }
-
-const IpcSocketProvider = undefined;
 
 /**
  *  @_ignore
@@ -19038,18 +18175,15 @@ var ethers = /*#__PURE__*/Object.freeze({
     FallbackFragment: FallbackFragment,
     FallbackProvider: FallbackProvider,
     FeeData: FeeData,
-    FeeDataNetworkPlugin: FeeDataNetworkPlugin,
     FetchCancelSignal: FetchCancelSignal,
     FetchRequest: FetchRequest,
     FetchResponse: FetchResponse,
-    FetchUrlFeeDataNetworkPlugin: FetchUrlFeeDataNetworkPlugin,
     FixedNumber: FixedNumber,
     Fragment: Fragment,
     FunctionFragment: FunctionFragment,
     GasCostPlugin: GasCostPlugin,
     Indexed: Indexed,
     Interface: Interface,
-    IpcSocketProvider: IpcSocketProvider,
     JsonRpcApiProvider: JsonRpcApiProvider,
     JsonRpcProvider: JsonRpcProvider,
     Log: Log,
@@ -19110,7 +18244,6 @@ var ethers = /*#__PURE__*/Object.freeze({
     getBytesCopy: getBytesCopy,
     getCreate2Address: getCreate2Address,
     getCreateAddress: getCreateAddress,
-    getDefaultProvider: getDefaultProvider,
     getIcapAddress: getIcapAddress,
     getNumber: getNumber,
     getUint: getUint,
@@ -19134,11 +18267,9 @@ var ethers = /*#__PURE__*/Object.freeze({
     randomBytes: randomBytes,
     resolveAddress: resolveAddress,
     resolveProperties: resolveProperties,
-    sha256: sha256,
     showThrottleMessage: showThrottleMessage,
     solidityPacked: solidityPacked,
     solidityPackedKeccak256: solidityPackedKeccak256,
-    solidityPackedSha256: solidityPackedSha256,
     stripZerosLeft: stripZerosLeft,
     toBeArray: toBeArray,
     toBeHex: toBeHex,
