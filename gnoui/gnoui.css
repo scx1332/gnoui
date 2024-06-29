@@ -406,8 +406,8 @@ body {
     background-size: auto 100%;
     background-repeat: no-repeat;
     background-position: left top;
-    height: 3.5em;
-    width: 10.5em;
+    height: 3.0em;
+    width: 9.0em;
 }
 .icon-multisig {
     background-image: url("icons/safe.png");
