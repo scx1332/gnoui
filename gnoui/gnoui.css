@@ -410,7 +410,7 @@ body {
     width: 9.0em;
 }
 .icon-multisig {
-    background-image: url("icons/safe.png");
+    background-image: url("icons/safe.svg");
     background-size: auto 100%;
     background-repeat: no-repeat;
     background-position: left top;
