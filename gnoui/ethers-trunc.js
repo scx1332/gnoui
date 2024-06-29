@@ -1080,28 +1080,9 @@ async function dataGatewayFunc(url, signal) {
         return new FetchResponse(599, "BAD REQUEST (invalid data: URI)", {}, null, new FetchRequest(url));
     }
 }
-/**
- *  Returns a [[FetchGatewayFunc]] for fetching content from a standard
- *  IPFS gateway hosted at %%baseUrl%%.
- */
-function getIpfsGatewayFunc(baseUrl) {
-    async function gatewayIpfs(url, signal) {
-        try {
-            const match = url.match(reIpfs);
-            if (!match) {
-                throw new Error("invalid link");
-            }
-            return new FetchRequest(`${baseUrl}${match[2]}`);
-        }
-        catch (error) {
-            return new FetchResponse(599, "BAD REQUEST (invalid IPFS URI)", {}, null, new FetchRequest(url));
-        }
-    }
-    return gatewayIpfs;
-}
+
 const Gateways = {
     "data": dataGatewayFunc,
-    "ipfs": getIpfsGatewayFunc("https:/\/gateway.ipfs.io/ipfs/")
 };
 const fetchSignals = new WeakMap();
 /**
@@ -6869,169 +6850,6 @@ class Signature {
 }
 
 /**
- *  Add details about signing here.
- *
- *  @_subsection: api/crypto:Signing  [about-signing]
- */
-/**
- *  A **SigningKey** provides high-level access to the elliptic curve
- *  cryptography (ECC) operations and key management.
- */
-class SigningKey {
-    #privateKey;
-    /**
-     *  Creates a new **SigningKey** for %%privateKey%%.
-     */
-    constructor(privateKey) {
-        assertArgument(dataLength(privateKey) === 32, "invalid private key", "privateKey", "[REDACTED]");
-        this.#privateKey = hexlify(privateKey);
-    }
-    /**
-     *  The private key.
-     */
-    get privateKey() { return this.#privateKey; }
-    /**
-     *  The uncompressed public key.
-     *
-     * This will always begin with the prefix ``0x04`` and be 132
-     * characters long (the ``0x`` prefix and 130 hexadecimal nibbles).
-     */
-    get publicKey() { return SigningKey.computePublicKey(this.#privateKey); }
-    /**
-     *  The compressed public key.
-     *
-     *  This will always begin with either the prefix ``0x02`` or ``0x03``
-     *  and be 68 characters long (the ``0x`` prefix and 33 hexadecimal
-     *  nibbles)
-     */
-    get compressedPublicKey() { return SigningKey.computePublicKey(this.#privateKey, true); }
-    /**
-     *  Return the signature of the signed %%digest%%.
-     */
-    sign(digest) {
-        assertArgument(dataLength(digest) === 32, "invalid digest length", "digest", digest);
-        const sig = secp256k1.sign(getBytesCopy(digest), getBytesCopy(this.#privateKey), {
-            lowS: true
-        });
-        return Signature.from({
-            r: toBeHex(sig.r, 32),
-            s: toBeHex(sig.s, 32),
-            v: (sig.recovery ? 0x1c : 0x1b)
-        });
-    }
-    /**
-     *  Returns the [[link-wiki-ecdh]] shared secret between this
-     *  private key and the %%other%% key.
-     *
-     *  The %%other%% key may be any type of key, a raw public key,
-     *  a compressed/uncompressed pubic key or aprivate key.
-     *
-     *  Best practice is usually to use a cryptographic hash on the
-     *  returned value before using it as a symetric secret.
-     *
-     *  @example:
-     *    sign1 = new SigningKey(id("some-secret-1"))
-     *    sign2 = new SigningKey(id("some-secret-2"))
-     *
-     *    // Notice that privA.computeSharedSecret(pubB)...
-     *    sign1.computeSharedSecret(sign2.publicKey)
-     *    //_result:
-     *
-     *    // ...is equal to privB.computeSharedSecret(pubA).
-     *    sign2.computeSharedSecret(sign1.publicKey)
-     *    //_result:
-     */
-    computeSharedSecret(other) {
-        const pubKey = SigningKey.computePublicKey(other);
-        return hexlify(secp256k1.getSharedSecret(getBytesCopy(this.#privateKey), getBytes(pubKey), false));
-    }
-    /**
-     *  Compute the public key for %%key%%, optionally %%compressed%%.
-     *
-     *  The %%key%% may be any type of key, a raw public key, a
-     *  compressed/uncompressed public key or private key.
-     *
-     *  @example:
-     *    sign = new SigningKey(id("some-secret"));
-     *
-     *    // Compute the uncompressed public key for a private key
-     *    SigningKey.computePublicKey(sign.privateKey)
-     *    //_result:
-     *
-     *    // Compute the compressed public key for a private key
-     *    SigningKey.computePublicKey(sign.privateKey, true)
-     *    //_result:
-     *
-     *    // Compute the uncompressed public key
-     *    SigningKey.computePublicKey(sign.publicKey, false);
-     *    //_result:
-     *
-     *    // Compute the Compressed a public key
-     *    SigningKey.computePublicKey(sign.publicKey, true);
-     *    //_result:
-     */
-    static computePublicKey(key, compressed) {
-        let bytes = getBytes(key, "key");
-        // private key
-        if (bytes.length === 32) {
-            const pubKey = secp256k1.getPublicKey(bytes, !!compressed);
-            return hexlify(pubKey);
-        }
-        // raw public key; use uncompressed key with 0x04 prefix
-        if (bytes.length === 64) {
-            const pub = new Uint8Array(65);
-            pub[0] = 0x04;
-            pub.set(bytes, 1);
-            bytes = pub;
-        }
-        const point = secp256k1.ProjectivePoint.fromHex(bytes);
-        return hexlify(point.toRawBytes(compressed));
-    }
-    /**
-     *  Returns the public key for the private key which produced the
-     *  %%signature%% for the given %%digest%%.
-     *
-     *  @example:
-     *    key = new SigningKey(id("some-secret"))
-     *    digest = id("hello world")
-     *    sig = key.sign(digest)
-     *
-     *    // Notice the signer public key...
-     *    key.publicKey
-     *    //_result:
-     *
-     *    // ...is equal to the recovered public key
-     *    SigningKey.recoverPublicKey(digest, sig)
-     *    //_result:
-     *
-     */
-    static recoverPublicKey(digest, signature) {
-        assertArgument(dataLength(digest) === 32, "invalid digest length", "digest", digest);
-        const sig = Signature.from(signature);
-        let secpSig = secp256k1.Signature.fromCompact(getBytesCopy(concat([sig.r, sig.s])));
-        secpSig = secpSig.addRecoveryBit(sig.yParity);
-        const pubKey = secpSig.recoverPublicKey(getBytesCopy(digest));
-        assertArgument(pubKey != null, "invalid signautre for digest", "signature", signature);
-        return "0x" + pubKey.toHex(false);
-    }
-    /**
-     *  Returns the point resulting from adding the ellipic curve points
-     *  %%p0%% and %%p1%%.
-     *
-     *  This is not a common function most developers should require, but
-     *  can be useful for certain privacy-specific techniques.
-     *
-     *  For example, it is used by [[HDNodeWallet]] to compute child
-     *  addresses from parent public keys and chain codes.
-     */
-    static addPoints(p0, p1, compressed) {
-        const pub0 = secp256k1.ProjectivePoint.fromHex(SigningKey.computePublicKey(p0).substring(2));
-        const pub1 = secp256k1.ProjectivePoint.fromHex(SigningKey.computePublicKey(p1).substring(2));
-        return "0x" + pub0.add(pub1).toHex(!!compressed);
-    }
-}
-
-/**
  *  A fundamental building block of Ethereum is the underlying
  *  cryptographic primitives.
  *
@@ -9603,29 +9421,6 @@ function accessListify(value) {
     });
     result.sort((a, b) => (a.address.localeCompare(b.address)));
     return result;
-}
-
-/**
- *  Returns the address for the %%key%%.
- *
- *  The key may be any standard form of public key or a private key.
- */
-function computeAddress(key) {
-    let pubkey;
-    if (typeof (key) === "string") {
-        pubkey = SigningKey.computePublicKey(key, false);
-    }
-    else {
-        pubkey = key.publicKey;
-    }
-    return getAddress(keccak256("0x" + pubkey.substring(4)).substring(26));
-}
-/**
- *  Returns the recovered address for the private key that was
- *  used to sign %%digest%% that resulted in %%signature%%.
- */
-function recoverAddress(digest, signature) {
-    return computeAddress(SigningKey.recoverPublicKey(digest, signature));
 }
 
 const BN_0$4 = BigInt(0);
@@ -22128,155 +21923,6 @@ class PocketProvider extends JsonRpcProvider {
 
 const IpcSocketProvider = undefined;
 
-/**
- *  The **BaseWallet** is a stream-lined implementation of a
- *  [[Signer]] that operates with a private key.
- *
- *  It is preferred to use the [[Wallet]] class, as it offers
- *  additional functionality and simplifies loading a variety
- *  of JSON formats, Mnemonic Phrases, etc.
- *
- *  This class may be of use for those attempting to implement
- *  a minimal Signer.
- */
-class BaseWallet extends AbstractSigner {
-    /**
-     *  The wallet address.
-     */
-    address;
-    #signingKey;
-    /**
-     *  Creates a new BaseWallet for %%privateKey%%, optionally
-     *  connected to %%provider%%.
-     *
-     *  If %%provider%% is not specified, only offline methods can
-     *  be used.
-     */
-    constructor(privateKey, provider) {
-        super(provider);
-        assertArgument(privateKey && typeof (privateKey.sign) === "function", "invalid private key", "privateKey", "[ REDACTED ]");
-        this.#signingKey = privateKey;
-        const address = computeAddress(this.signingKey.publicKey);
-        defineProperties(this, { address });
-    }
-    // Store private values behind getters to reduce visibility
-    // in console.log
-    /**
-     *  The [[SigningKey]] used for signing payloads.
-     */
-    get signingKey() { return this.#signingKey; }
-    /**
-     *  The private key for this wallet.
-     */
-    get privateKey() { return this.signingKey.privateKey; }
-    async getAddress() { return this.address; }
-    connect(provider) {
-        return new BaseWallet(this.#signingKey, provider);
-    }
-    async signTransaction(tx) {
-        // Replace any Addressable or ENS name with an address
-        const { to, from } = await resolveProperties({
-            to: (tx.to ? resolveAddress(tx.to, this.provider) : undefined),
-            from: (tx.from ? resolveAddress(tx.from, this.provider) : undefined)
-        });
-        if (to != null) {
-            tx.to = to;
-        }
-        if (from != null) {
-            tx.from = from;
-        }
-        if (tx.from != null) {
-            assertArgument(getAddress((tx.from)) === this.address, "transaction from address mismatch", "tx.from", tx.from);
-            delete tx.from;
-        }
-        // Build the transaction
-        const btx = Transaction.from(tx);
-        btx.signature = this.signingKey.sign(btx.unsignedHash);
-        return btx.serialized;
-    }
-    async signMessage(message) {
-        return this.signMessageSync(message);
-    }
-    // @TODO: Add a secialized signTx and signTyped sync that enforces
-    // all parameters are known?
-    /**
-     *  Returns the signature for %%message%% signed with this wallet.
-     */
-    signMessageSync(message) {
-        return this.signingKey.sign(hashMessage(message)).serialized;
-    }
-    async signTypedData(domain, types, value) {
-        // Populate any ENS names
-        const populated = await TypedDataEncoder.resolveNames(domain, types, value, async (name) => {
-            // @TODO: this should use resolveName; addresses don't
-            //        need a provider
-            assert(this.provider != null, "cannot resolve ENS names without a provider", "UNSUPPORTED_OPERATION", {
-                operation: "resolveName",
-                info: { name }
-            });
-            const address = await this.provider.resolveName(name);
-            assert(address != null, "unconfigured ENS name", "UNCONFIGURED_NAME", {
-                value: name
-            });
-            return address;
-        });
-        return this.signingKey.sign(TypedDataEncoder.hash(populated.domain, types, populated.value)).serialized;
-    }
-}
-
-const subsChrs = " !#$%&'()*+,-./<=>?@[]^_`{|}~";
-const Word = /^[a-z]*$/i;
-function unfold(words, sep) {
-    let initial = 97;
-    return words.reduce((accum, word) => {
-        if (word === sep) {
-            initial++;
-        }
-        else if (word.match(Word)) {
-            accum.push(String.fromCharCode(initial) + word);
-        }
-        else {
-            initial = 97;
-            accum.push(word);
-        }
-        return accum;
-    }, []);
-}
-/**
- *  @_ignore
- */
-function decode(data, subs) {
-    // Replace all the substitutions with their expanded form
-    for (let i = subsChrs.length - 1; i >= 0; i--) {
-        data = data.split(subsChrs[i]).join(subs.substring(2 * i, 2 * i + 2));
-    }
-    // Get all tle clumps; each suffix, first-increment and second-increment
-    const clumps = [];
-    const leftover = data.replace(/(:|([0-9])|([A-Z][a-z]*))/g, (all, item, semi, word) => {
-        if (semi) {
-            for (let i = parseInt(semi); i >= 0; i--) {
-                clumps.push(";");
-            }
-        }
-        else {
-            clumps.push(item.toLowerCase());
-        }
-        return "";
-    });
-    /* c8 ignore start */
-    if (leftover) {
-        throw new Error(`leftovers: ${JSON.stringify(leftover)}`);
-    }
-    /* c8 ignore stop */
-    return unfold(unfold(clumps, ";"), ":");
-}
-/**
- *  @_ignore
- */
-function decodeOwl(data) {
-    assertArgument(data[0] === "0", "unsupported auwl data", "data", data);
-    return decode(data.substring(1 + 2 * subsChrs.length), data.substring(1, 1 + 2 * subsChrs.length));
-}
 
 /**
  *  A Wordlist represents a collection of language-specific
@@ -23151,298 +22797,6 @@ function decryptKeystoreJsonSync(json, _password) {
 function stall$1(duration) {
     return new Promise((resolve) => { setTimeout(() => { resolve(); }, duration); });
 }
-/**
- *  Resolves to the decrypted JSON Keystore Wallet %%json%% using the
- *  %%password%%.
- *
- *  If provided, %%progress%% will be called periodically during the
- *  decrpytion to provide feedback, and if the function returns
- *  ``false`` will halt decryption.
- *
- *  The %%progressCallback%% will **always** receive ``0`` before
- *  decryption begins and ``1`` when complete.
- */
-async function decryptKeystoreJson(json, _password, progress) {
-    const data = JSON.parse(json);
-    const password = getPassword(_password);
-    const params = getDecryptKdfParams(data);
-    if (params.name === "pbkdf2") {
-        if (progress) {
-            progress(0);
-            await stall$1(0);
-        }
-        const { salt, count, dkLen, algorithm } = params;
-        const key = pbkdf2(password, salt, count, dkLen, algorithm);
-        if (progress) {
-            progress(1);
-            await stall$1(0);
-        }
-        return getAccount(data, key);
-    }
-    assert(params.name === "scrypt", "cannot be reached", "UNKNOWN_ERROR", { params });
-    const { salt, N, r, p, dkLen } = params;
-    const key = await scrypt(password, salt, N, r, p, dkLen, progress);
-    return getAccount(data, key);
-}
-function getEncryptKdfParams(options) {
-    // Check/generate the salt
-    const salt = (options.salt != null) ? getBytes(options.salt, "options.salt") : randomBytes(32);
-    // Override the scrypt password-based key derivation function parameters
-    let N = (1 << 17), r = 8, p = 1;
-    if (options.scrypt) {
-        if (options.scrypt.N) {
-            N = options.scrypt.N;
-        }
-        if (options.scrypt.r) {
-            r = options.scrypt.r;
-        }
-        if (options.scrypt.p) {
-            p = options.scrypt.p;
-        }
-    }
-    assertArgument(typeof (N) === "number" && N > 0 && Number.isSafeInteger(N) && (BigInt(N) & BigInt(N - 1)) === BigInt(0), "invalid scrypt N parameter", "options.N", N);
-    assertArgument(typeof (r) === "number" && r > 0 && Number.isSafeInteger(r), "invalid scrypt r parameter", "options.r", r);
-    assertArgument(typeof (p) === "number" && p > 0 && Number.isSafeInteger(p), "invalid scrypt p parameter", "options.p", p);
-    return { name: "scrypt", dkLen: 32, salt, N, r, p };
-}
-function _encryptKeystore(key, kdf, account, options) {
-    const privateKey = getBytes(account.privateKey, "privateKey");
-    // Override initialization vector
-    const iv = (options.iv != null) ? getBytes(options.iv, "options.iv") : randomBytes(16);
-    assertArgument(iv.length === 16, "invalid options.iv length", "options.iv", options.iv);
-    // Override the uuid
-    const uuidRandom = (options.uuid != null) ? getBytes(options.uuid, "options.uuid") : randomBytes(16);
-    assertArgument(uuidRandom.length === 16, "invalid options.uuid length", "options.uuid", options.iv);
-    // This will be used to encrypt the wallet (as per Web3 secret storage)
-    // - 32 bytes   As normal for the Web3 secret storage (derivedKey, macPrefix)
-    // - 32 bytes   AES key to encrypt mnemonic with (required here to be Ethers Wallet)
-    const derivedKey = key.slice(0, 16);
-    const macPrefix = key.slice(16, 32);
-    // Encrypt the private key
-    const aesCtr = new CTR(derivedKey, iv);
-    const ciphertext = getBytes(aesCtr.encrypt(privateKey));
-    // Compute the message authentication code, used to check the password
-    const mac = keccak256(concat([macPrefix, ciphertext]));
-    // See: https://github.com/ethereum/wiki/wiki/Web3-Secret-Storage-Definition
-    const data = {
-        address: account.address.substring(2).toLowerCase(),
-        id: uuidV4(uuidRandom),
-        version: 3,
-        Crypto: {
-            cipher: "aes-128-ctr",
-            cipherparams: {
-                iv: hexlify(iv).substring(2),
-            },
-            ciphertext: hexlify(ciphertext).substring(2),
-            kdf: "scrypt",
-            kdfparams: {
-                salt: hexlify(kdf.salt).substring(2),
-                n: kdf.N,
-                dklen: 32,
-                p: kdf.p,
-                r: kdf.r
-            },
-            mac: mac.substring(2)
-        }
-    };
-    // If we have a mnemonic, encrypt it into the JSON wallet
-    if (account.mnemonic) {
-        const client = (options.client != null) ? options.client : `ethers/${version}`;
-        const path = account.mnemonic.path || defaultPath$1;
-        const locale = account.mnemonic.locale || "en";
-        const mnemonicKey = key.slice(32, 64);
-        const entropy = getBytes(account.mnemonic.entropy, "account.mnemonic.entropy");
-        const mnemonicIv = randomBytes(16);
-        const mnemonicAesCtr = new CTR(mnemonicKey, mnemonicIv);
-        const mnemonicCiphertext = getBytes(mnemonicAesCtr.encrypt(entropy));
-        const now = new Date();
-        const timestamp = (now.getUTCFullYear() + "-" +
-            zpad$1(now.getUTCMonth() + 1, 2) + "-" +
-            zpad$1(now.getUTCDate(), 2) + "T" +
-            zpad$1(now.getUTCHours(), 2) + "-" +
-            zpad$1(now.getUTCMinutes(), 2) + "-" +
-            zpad$1(now.getUTCSeconds(), 2) + ".0Z");
-        const gethFilename = ("UTC--" + timestamp + "--" + data.address);
-        data["x-ethers"] = {
-            client, gethFilename, path, locale,
-            mnemonicCounter: hexlify(mnemonicIv).substring(2),
-            mnemonicCiphertext: hexlify(mnemonicCiphertext).substring(2),
-            version: "0.1"
-        };
-    }
-    return JSON.stringify(data);
-}
-/**
- *  Return the JSON Keystore Wallet for %%account%% encrypted with
- *  %%password%%.
- *
- *  The %%options%% can be used to tune the password-based key
- *  derivation function parameters, explicitly set the random values
- *  used. Any provided [[ProgressCallback]] is ignord.
- */
-function encryptKeystoreJsonSync(account, password, options) {
-    if (options == null) {
-        options = {};
-    }
-    const passwordBytes = getPassword(password);
-    const kdf = getEncryptKdfParams(options);
-    const key = scryptSync(passwordBytes, kdf.salt, kdf.N, kdf.r, kdf.p, 64);
-    return _encryptKeystore(getBytes(key), kdf, account, options);
-}
-/**
- *  Resolved to the JSON Keystore Wallet for %%account%% encrypted
- *  with %%password%%.
- *
- *  The %%options%% can be used to tune the password-based key
- *  derivation function parameters, explicitly set the random values
- *  used and provide a [[ProgressCallback]] to receive periodic updates
- *  on the completion status..
- */
-async function encryptKeystoreJson(account, password, options) {
-    if (options == null) {
-        options = {};
-    }
-    const passwordBytes = getPassword(password);
-    const kdf = getEncryptKdfParams(options);
-    const key = await scrypt(passwordBytes, kdf.salt, kdf.N, kdf.r, kdf.p, 64, options.progressCallback);
-    return _encryptKeystore(getBytes(key), kdf, account, options);
-}
-
-
-
-/**
- *  A **Wallet** manages a single private key which is used to sign
- *  transactions, messages and other common payloads.
- *
- *  This class is generally the main entry point for developers
- *  that wish to use a private key directly, as it can create
- *  instances from a large variety of common sources, including
- *  raw private key, [[link-bip-39]] mnemonics and encrypte JSON
- *  wallets.
- */
-class Wallet extends BaseWallet {
-    /**
-     *  Create a new wallet for the private %%key%%, optionally connected
-     *  to %%provider%%.
-     */
-    constructor(key, provider) {
-        if (typeof (key) === "string" && !key.startsWith("0x")) {
-            key = "0x" + key;
-        }
-        let signingKey = (typeof (key) === "string") ? new SigningKey(key) : key;
-        super(signingKey, provider);
-    }
-    connect(provider) {
-        return new Wallet(this.signingKey, provider);
-    }
-    /**
-     *  Resolves to a [JSON Keystore Wallet](json-wallets) encrypted with
-     *  %%password%%.
-     *
-     *  If %%progressCallback%% is specified, it will receive periodic
-     *  updates as the encryption process progreses.
-     */
-    async encrypt(password, progressCallback) {
-        const account = { address: this.address, privateKey: this.privateKey };
-        return await encryptKeystoreJson(account, password, { progressCallback });
-    }
-    /**
-     *  Returns a [JSON Keystore Wallet](json-wallets) encryped with
-     *  %%password%%.
-     *
-     *  It is preferred to use the [async version](encrypt) instead,
-     *  which allows a [[ProgressCallback]] to keep the user informed.
-     *
-     *  This method will block the event loop (freezing all UI) until
-     *  it is complete, which may be a non-trivial duration.
-     */
-    encryptSync(password) {
-        const account = { address: this.address, privateKey: this.privateKey };
-        return encryptKeystoreJsonSync(account, password);
-    }
-    static #fromAccount(account) {
-        assertArgument(account, "invalid JSON wallet", "json", "[ REDACTED ]");
-        if ("mnemonic" in account && account.mnemonic && account.mnemonic.locale === "en") {
-            const mnemonic = Mnemonic.fromEntropy(account.mnemonic.entropy);
-            const wallet = HDNodeWallet.fromMnemonic(mnemonic, account.mnemonic.path);
-            if (wallet.address === account.address && wallet.privateKey === account.privateKey) {
-                return wallet;
-            }
-            console.log("WARNING: JSON mismatch address/privateKey != mnemonic; fallback onto private key");
-        }
-        const wallet = new Wallet(account.privateKey);
-        assertArgument(wallet.address === account.address, "address/privateKey mismatch", "json", "[ REDACTED ]");
-        return wallet;
-    }
-    /**
-     *  Creates (asynchronously) a **Wallet** by decrypting the %%json%%
-     *  with %%password%%.
-     *
-     *  If %%progress%% is provided, it is called periodically during
-     *  decryption so that any UI can be updated.
-     */
-    static async fromEncryptedJson(json, password, progress) {
-        let account = null;
-        if (isKeystoreJson(json)) {
-            account = await decryptKeystoreJson(json, password, progress);
-        }
-        else if (isCrowdsaleJson(json)) {
-            if (progress) {
-                progress(0);
-                await stall(0);
-            }
-            account = decryptCrowdsaleJson(json, password);
-            if (progress) {
-                progress(1);
-                await stall(0);
-            }
-        }
-        return Wallet.#fromAccount(account);
-    }
-    /**
-     *  Creates a **Wallet** by decrypting the %%json%% with %%password%%.
-     *
-     *  The [[fromEncryptedJson]] method is preferred, as this method
-     *  will lock up and freeze the UI during decryption, which may take
-     *  some time.
-     */
-    static fromEncryptedJsonSync(json, password) {
-        let account = null;
-        if (isKeystoreJson(json)) {
-            account = decryptKeystoreJsonSync(json, password);
-        }
-        else if (isCrowdsaleJson(json)) {
-            account = decryptCrowdsaleJson(json, password);
-        }
-        else {
-            assertArgument(false, "invalid JSON wallet", "json", "[ REDACTED ]");
-        }
-        return Wallet.#fromAccount(account);
-    }
-    /**
-     *  Creates a new random [[HDNodeWallet]] using the available
-     *  [cryptographic random source](randomBytes).
-     *
-     *  If there is no crytographic random source, this will throw.
-     */
-    static createRandom(provider) {
-        const wallet = HDNodeWallet.createRandom();
-        if (provider) {
-            return wallet.connect(provider);
-        }
-        return wallet;
-    }
-    /**
-     *  Creates a [[HDNodeWallet]] for %%phrase%%.
-     */
-    static fromPhrase(phrase, provider) {
-        const wallet = HDNodeWallet.fromPhrase(phrase);
-        if (provider) {
-            return wallet.connect(provider);
-        }
-        return wallet;
-    }
-}
 
 const Base64 = ")!@#$%^&*(ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_";
 /**
@@ -23548,7 +22902,6 @@ var ethers = /*#__PURE__*/Object.freeze({
     AbstractProvider: AbstractProvider,
     AbstractSigner: AbstractSigner,
     BaseContract: BaseContract,
-    BaseWallet: BaseWallet,
     Block: Block,
     BrowserProvider: BrowserProvider,
     ConstructorFragment: ConstructorFragment,
@@ -23602,7 +22955,6 @@ var ethers = /*#__PURE__*/Object.freeze({
     QuickNodeProvider: QuickNodeProvider,
     Result: Result,
     Signature: Signature,
-    SigningKey: SigningKey,
     SocketBlockSubscriber: SocketBlockSubscriber,
     SocketEventSubscriber: SocketEventSubscriber,
     SocketPendingSubscriber: SocketPendingSubscriber,
@@ -23619,7 +22971,6 @@ var ethers = /*#__PURE__*/Object.freeze({
     UnmanagedSubscriber: UnmanagedSubscriber,
     Utf8ErrorFuncs: Utf8ErrorFuncs,
     VoidSigner: VoidSigner,
-    Wallet: Wallet,
     WebSocketProvider: WebSocketProvider,
     WeiPerEther: WeiPerEther,
     Wordlist: Wordlist,
@@ -23634,7 +22985,6 @@ var ethers = /*#__PURE__*/Object.freeze({
     assertNormalize: assertNormalize,
     assertPrivate: assertPrivate,
     checkResultErrors: checkResultErrors,
-    computeAddress: computeAddress,
     computeHmac: computeHmac,
     concat: concat,
     copyRequest: copyRequest,
@@ -23644,7 +22994,6 @@ var ethers = /*#__PURE__*/Object.freeze({
     decodeBase64: decodeBase64,
     decodeBytes32String: decodeBytes32String,
     decodeRlp: decodeRlp,
-    decryptKeystoreJson: decryptKeystoreJson,
     decryptKeystoreJsonSync: decryptKeystoreJsonSync,
     defineProperties: defineProperties,
     dnsEncode: dnsEncode,
@@ -23652,8 +23001,6 @@ var ethers = /*#__PURE__*/Object.freeze({
     encodeBase64: encodeBase64,
     encodeBytes32String: encodeBytes32String,
     encodeRlp: encodeRlp,
-    encryptKeystoreJson: encryptKeystoreJson,
-    encryptKeystoreJsonSync: encryptKeystoreJsonSync,
     ensNormalize: ensNormalize,
     formatEther: formatEther,
     formatUnits: formatUnits,
@@ -23688,7 +23035,6 @@ var ethers = /*#__PURE__*/Object.freeze({
     parseUnits: parseUnits$1,
     pbkdf2: pbkdf2,
     randomBytes: randomBytes,
-    recoverAddress: recoverAddress,
     resolveAddress: resolveAddress,
     resolveProperties: resolveProperties,
     ripemd160: ripemd160,
