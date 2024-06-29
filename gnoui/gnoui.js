@@ -1,4 +1,4 @@
-import {parseEther, getAddress, formatEther, hexlify, Interface, Contract, BrowserProvider, ContractFactory, formatUnits, parseUnits, isAddress, isHexString, AbiCoder} from "./ethers.js";
+import {parseEther, getAddress, formatEther, hexlify, Interface, Contract, BrowserProvider, ContractFactory, formatUnits, parseUnits, isAddress, isHexString, AbiCoder} from "./ethers-trunc.js";
 
 
 let verifiedTokens = {
