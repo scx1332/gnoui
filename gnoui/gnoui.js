@@ -201,7 +201,7 @@ function getMultiSigAddress(network) {
     if (localStorageItem) {
         return getAddress(localStorageItem.toLowerCase());
     }
-    return null;
+    return "0x0000000000000000000000000000000000000000";
 }
 
 async function downloadAbi(network, contractAddress) {
@@ -413,21 +413,22 @@ async function getTransactionDetails(contract, transactionId) {
         if (!executed) {
             parentDiv.appendChild(createDivWithClassAndContent(
                 "details-label transaction-details-header-label",
-                '<div style="display:flex;flex-direction: horizontal;"><div class="icon-not-confirmed"></div><div>Awaiting</div></div>',
+                `<div style="display:flex;flex-direction: row;align-items: center;"><div class="icon-not-confirmed"></div><div class="transaction-explanation">Transaction with id: ${transactionId}<br/>awaits confirmation</div></div>`,
                 true
             ));
         } else {
             parentDiv.appendChild(createDivWithClassAndContent(
                 "details-label transaction-details-header-label",
-                '<div style="display:flex;flex-direction: horizontal;"><div class="icon-confirmed"></div><div>Confirmed</div></div>',
+                `<div style="display:flex;flex-direction: row;align-items: center;"><div class="icon-confirmed"></div><div class="transaction-explanation">Transaction with id: ${transactionId}<br/>successfully executed</div></div>`,
                 true
             ));
         }
+        /*
         parentDiv.appendChild(createDivWithClassAndContent(
             "details-value transaction-details-value",
             `ID: ${transactionId}`,
             true
-        ));
+        ));*/
         newDiv.appendChild(parentDiv);
     }
 
@@ -722,7 +723,7 @@ async function get_chain_id() {
     updateConnected();
 
     let contract = null;
-    if (globals.multiSigAddress != null) {
+    if (globals.multiSigAddress != "0x0000000000000000000000000000000000000000") {
         try {
             contract = new Contract(globals.multiSigAddress, gnosisAbi, new BrowserProvider(provider))
 

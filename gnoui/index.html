@@ -129,15 +129,17 @@
     </div>
     <div id="nav-obj-new-eth-transaction" style="border: 1px solid blue; padding: 1em; display: flex; flex-direction: column;">
         <div class="settings-main-entry" >
-            <div class="new-eth-icon"></div>
-            <div style="margin-bottom: 0.5em; font-weight: bold">Initiate ETH transfer from MultiSig address</div>
-            <div style="margin: 0.2em;">
-                <b>Available:</b> <span id="available-ethers">N/A</span>
+            <div style="flex-direction: row; display: flex; align-items: center; padding: 0.2em 0.2em 0.5em 0.2em;border-bottom: 1px solid #615858;">
+                <div class="new-eth-icon"></div>
+                <div class="transaction-explanation">Initiate ETH transfer <br> from MultiSig address</div>
             </div>
-            <div style="margin: 0.2em;">
+            <div style="margin: 0.2em; padding: 0.5em 0.2em 0.8em 0.2em; border-bottom: 1px solid #615858;">
+                <b>Available ETH:</b> <span id="available-ethers">N/A</span>
+            </div>
+            <div style="margin: 0.8em 0.2em;">
                 Receiver (destination) address <input type="text" id="gas-destination-address" value="0xd8da6bf26964af9d7eed9e03e53415d37aa96045"/>
             </div>
-            <div style="margin: 0.2em;">
+            <div style="margin: 0.8em 0.2em;">
                 Value: <input type="text" id="gas-transfer-value" value="0.0"/>
             </div>
             <div style="padding-top: 0.5em;">

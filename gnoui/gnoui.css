@@ -377,30 +377,37 @@ body {
     font-size: 16px;
     line-height: 1.6;
 }
+.transaction-explanation {
+    margin-left: 1em;
+    font-family: Arial, sans-serif;
+    font-size: 1.0em;
+    line-height: 1.4em;
+    color: #333;
+    font-weight: bold;
+}
 .icon-not-confirmed {
-    background-image: url("icons/not-confirmed.png");
+    background-image: url("icons/not-confirmed.svg");
     background-size: auto 100%;
     background-repeat: no-repeat;
     background-position: left top;
     height: 2.5em;
-    width: 2.5em;
+    width: 3.0em;
 }
 .icon-confirmed {
-    background-image: url("icons/confirmed.png");
+    background-image: url("icons/confirmed.svg");
     background-size: auto 100%;
     background-repeat: no-repeat;
     background-position: left top;
     height: 2.5em;
-    width: 2.5em;
+    width: 3.0em;
 }
 .new-eth-icon {
-    background-image: url("icons/new-eth.png");
+    background-image: url("icons/new-eth.svg");
     background-size: auto 100%;
     background-repeat: no-repeat;
     background-position: left top;
     height: 3.5em;
     width: 10.5em;
-    margin-bottom: 1em;
 }
 .icon-multisig {
     background-image: url("icons/safe.png");
@@ -422,4 +429,8 @@ body {
     height: 5em;
     padding: 1.3em 0.3em;
     align-content: center;
+}
+
+.question-guy-body {
+    fill: #007BFF;
 }
