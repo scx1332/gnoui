@@ -1080,9 +1080,8 @@ async function dataGatewayFunc(url, signal) {
         return new FetchResponse(599, "BAD REQUEST (invalid data: URI)", {}, null, new FetchRequest(url));
     }
 }
-
 const Gateways = {
-    "data": dataGatewayFunc,
+    "data": dataGatewayFunc
 };
 const fetchSignals = new WeakMap();
 /**
@@ -3180,80 +3179,6 @@ function randomBytes$2(bytesLength = 32) {
 }
 
 
-// Polyfill for Safari 14
-function setBigUint64(view, byteOffset, value, isLE) {
-    if (typeof view.setBigUint64 === 'function')
-        return view.setBigUint64(byteOffset, value, isLE);
-    const _32n = BigInt(32);
-    const _u32_max = BigInt(0xffffffff);
-    const wh = Number((value >> _32n) & _u32_max);
-    const wl = Number(value & _u32_max);
-    const h = isLE ? 4 : 0;
-    const l = isLE ? 0 : 4;
-    view.setUint32(byteOffset + h, wh, isLE);
-    view.setUint32(byteOffset + l, wl, isLE);
-}
-
-const U32_MASK64 = /* @__PURE__ */ BigInt(2 ** 32 - 1);
-const _32n = /* @__PURE__ */ BigInt(32);
-// We are not using BigUint64Array, because they are extremely slow as per 2022
-function fromBig(n, le = false) {
-    if (le)
-        return { h: Number(n & U32_MASK64), l: Number((n >> _32n) & U32_MASK64) };
-    return { h: Number((n >> _32n) & U32_MASK64) | 0, l: Number(n & U32_MASK64) | 0 };
-}
-function split$1(lst, le = false) {
-    let Ah = new Uint32Array(lst.length);
-    let Al = new Uint32Array(lst.length);
-    for (let i = 0; i < lst.length; i++) {
-        const { h, l } = fromBig(lst[i], le);
-        [Ah[i], Al[i]] = [h, l];
-    }
-    return [Ah, Al];
-}
-const toBig = (h, l) => (BigInt(h >>> 0) << _32n) | BigInt(l >>> 0);
-// for Shift in [0, 32)
-const shrSH = (h, _l, s) => h >>> s;
-const shrSL = (h, l, s) => (h << (32 - s)) | (l >>> s);
-// Right rotate for Shift in [1, 32)
-const rotrSH = (h, l, s) => (h >>> s) | (l << (32 - s));
-const rotrSL = (h, l, s) => (h << (32 - s)) | (l >>> s);
-// Right rotate for Shift in (32, 64), NOTE: 32 is special case.
-const rotrBH = (h, l, s) => (h << (64 - s)) | (l >>> (s - 32));
-const rotrBL = (h, l, s) => (h >>> (s - 32)) | (l << (64 - s));
-// Right rotate for shift===32 (just swaps l&h)
-const rotr32H = (_h, l) => l;
-const rotr32L = (h, _l) => h;
-// Left rotate for Shift in [1, 32)
-const rotlSH = (h, l, s) => (h << s) | (l >>> (32 - s));
-const rotlSL = (h, l, s) => (l << s) | (h >>> (32 - s));
-// Left rotate for Shift in (32, 64), NOTE: 32 is special case.
-const rotlBH = (h, l, s) => (l << (s - 32)) | (h >>> (64 - s));
-const rotlBL = (h, l, s) => (h << (s - 32)) | (l >>> (64 - s));
-// JS uses 32-bit signed integers for bitwise operations which means we cannot
-// simple take carry out of low bit sum by shift, we need to use division.
-function add(Ah, Al, Bh, Bl) {
-    const l = (Al >>> 0) + (Bl >>> 0);
-    return { h: (Ah + Bh + ((l / 2 ** 32) | 0)) | 0, l: l | 0 };
-}
-// Addition with more than 2 elements
-const add3L = (Al, Bl, Cl) => (Al >>> 0) + (Bl >>> 0) + (Cl >>> 0);
-const add3H = (low, Ah, Bh, Ch) => (Ah + Bh + Ch + ((low / 2 ** 32) | 0)) | 0;
-const add4L = (Al, Bl, Cl, Dl) => (Al >>> 0) + (Bl >>> 0) + (Cl >>> 0) + (Dl >>> 0);
-const add4H = (low, Ah, Bh, Ch, Dh) => (Ah + Bh + Ch + Dh + ((low / 2 ** 32) | 0)) | 0;
-const add5L = (Al, Bl, Cl, Dl, El) => (Al >>> 0) + (Bl >>> 0) + (Cl >>> 0) + (Dl >>> 0) + (El >>> 0);
-const add5H = (low, Ah, Bh, Ch, Dh, Eh) => (Ah + Bh + Ch + Dh + Eh + ((low / 2 ** 32) | 0)) | 0;
-// prettier-ignore
-const u64 = {
-    fromBig, split: split$1, toBig,
-    shrSH, shrSL,
-    rotrSH, rotrSL, rotrBH, rotrBL,
-    rotr32H, rotr32L,
-    rotlSH, rotlSL, rotlBH, rotlBL,
-    add, add3L, add3H, add4L, add4H, add5H, add5L,
-};
-var u64$1 = u64;
-
 function randomBytes$1(length) {
     assert(crypto != null, "platform does not support secure random numbers", "UNSUPPORTED_OPERATION", {
         operation: "randomBytes"
@@ -3537,238 +3462,6 @@ Object.freeze(randomBytes);
 // RFC 7914 Scrypt KDF
 // Left rotate for uint32
 const rotl = (a, b) => (a << b) | (a >>> (32 - b));
-
-
-/*! noble-curves - MIT License (c) 2022 Paul Miller (paulmillr.com) */
-// 100 lines of code in the file are duplicated from noble-hashes (utils).
-// This is OK: `abstract` directory does not use noble-hashes.
-// User may opt-in into using different hashing library. This way, noble-hashes
-// won't be included into their bundle.
-const _0n$3 = BigInt(0);
-const _1n$4 = BigInt(1);
-const _2n$2 = BigInt(2);
-const u8a = (a) => a instanceof Uint8Array;
-const hexes = /* @__PURE__ */ Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, '0'));
-/**
- * @example bytesToHex(Uint8Array.from([0xca, 0xfe, 0x01, 0x23])) // 'cafe0123'
- */
-function bytesToHex(bytes) {
-    if (!u8a(bytes))
-        throw new Error('Uint8Array expected');
-    // pre-caching improves the speed 6x
-    let hex = '';
-    for (let i = 0; i < bytes.length; i++) {
-        hex += hexes[bytes[i]];
-    }
-    return hex;
-}
-function numberToHexUnpadded(num) {
-    const hex = num.toString(16);
-    return hex.length & 1 ? `0${hex}` : hex;
-}
-function hexToNumber(hex) {
-    if (typeof hex !== 'string')
-        throw new Error('hex string expected, got ' + typeof hex);
-    // Big Endian
-    return BigInt(hex === '' ? '0' : `0x${hex}`);
-}
-/**
- * @example hexToBytes('cafe0123') // Uint8Array.from([0xca, 0xfe, 0x01, 0x23])
- */
-function hexToBytes(hex) {
-    if (typeof hex !== 'string')
-        throw new Error('hex string expected, got ' + typeof hex);
-    const len = hex.length;
-    if (len % 2)
-        throw new Error('padded hex string expected, got unpadded hex of length ' + len);
-    const array = new Uint8Array(len / 2);
-    for (let i = 0; i < array.length; i++) {
-        const j = i * 2;
-        const hexByte = hex.slice(j, j + 2);
-        const byte = Number.parseInt(hexByte, 16);
-        if (Number.isNaN(byte) || byte < 0)
-            throw new Error('Invalid byte sequence');
-        array[i] = byte;
-    }
-    return array;
-}
-// BE: Big Endian, LE: Little Endian
-function bytesToNumberBE(bytes) {
-    return hexToNumber(bytesToHex(bytes));
-}
-function bytesToNumberLE(bytes) {
-    if (!u8a(bytes))
-        throw new Error('Uint8Array expected');
-    return hexToNumber(bytesToHex(Uint8Array.from(bytes).reverse()));
-}
-function numberToBytesBE(n, len) {
-    return hexToBytes(n.toString(16).padStart(len * 2, '0'));
-}
-function numberToBytesLE(n, len) {
-    return numberToBytesBE(n, len).reverse();
-}
-// Unpadded, rarely used
-function numberToVarBytesBE(n) {
-    return hexToBytes(numberToHexUnpadded(n));
-}
-/**
- * Takes hex string or Uint8Array, converts to Uint8Array.
- * Validates output length.
- * Will throw error for other types.
- * @param title descriptive title for an error e.g. 'private key'
- * @param hex hex string or Uint8Array
- * @param expectedLength optional, will compare to result array's length
- * @returns
- */
-function ensureBytes(title, hex, expectedLength) {
-    let res;
-    if (typeof hex === 'string') {
-        try {
-            res = hexToBytes(hex);
-        }
-        catch (e) {
-            throw new Error(`${title} must be valid hex string, got "${hex}". Cause: ${e}`);
-        }
-    }
-    else if (u8a(hex)) {
-        // Uint8Array.from() instead of hash.slice() because node.js Buffer
-        // is instance of Uint8Array, and its slice() creates **mutable** copy
-        res = Uint8Array.from(hex);
-    }
-    else {
-        throw new Error(`${title} must be hex string or Uint8Array`);
-    }
-    const len = res.length;
-    if (typeof expectedLength === 'number' && len !== expectedLength)
-        throw new Error(`${title} expected ${expectedLength} bytes, got ${len}`);
-    return res;
-}
-/**
- * Copies several Uint8Arrays into one.
- */
-function concatBytes(...arrays) {
-    const r = new Uint8Array(arrays.reduce((sum, a) => sum + a.length, 0));
-    let pad = 0; // walk through each item, ensure they have proper type
-    arrays.forEach((a) => {
-        if (!u8a(a))
-            throw new Error('Uint8Array expected');
-        r.set(a, pad);
-        pad += a.length;
-    });
-    return r;
-}
-function equalBytes(b1, b2) {
-    // We don't care about timing attacks here
-    if (b1.length !== b2.length)
-        return false;
-    for (let i = 0; i < b1.length; i++)
-        if (b1[i] !== b2[i])
-            return false;
-    return true;
-}
-/**
- * @example utf8ToBytes('abc') // new Uint8Array([97, 98, 99])
- */
-function utf8ToBytes(str) {
-    if (typeof str !== 'string')
-        throw new Error(`utf8ToBytes expected string, got ${typeof str}`);
-    return new Uint8Array(new TextEncoder().encode(str)); // https://bugzil.la/1681809
-}
-// Bit operations
-/**
- * Calculates amount of bits in a bigint.
- * Same as `n.toString(2).length`
- */
-function bitLen(n) {
-    let len;
-    for (len = 0; n > _0n$3; n >>= _1n$4, len += 1)
-        ;
-    return len;
-}
-/**
- * Gets single bit at position.
- * NOTE: first bit position is 0 (same as arrays)
- * Same as `!!+Array.from(n.toString(2)).reverse()[pos]`
- */
-function bitGet(n, pos) {
-    return (n >> BigInt(pos)) & _1n$4;
-}
-/**
- * Sets single bit at position.
- */
-const bitSet = (n, pos, value) => {
-    return n | ((value ? _1n$4 : _0n$3) << BigInt(pos));
-};
-/**
- * Calculate mask for N bits. Not using ** operator with bigints because of old engines.
- * Same as BigInt(`0b${Array(i).fill('1').join('')}`)
- */
-const bitMask = (n) => (_2n$2 << BigInt(n - 1)) - _1n$4;
-// DRBG
-const u8n = (data) => new Uint8Array(data); // creates Uint8Array
-const u8fr = (arr) => Uint8Array.from(arr); // another shortcut
-
-// Validating curves and fields
-const validatorFns = {
-    bigint: (val) => typeof val === 'bigint',
-    function: (val) => typeof val === 'function',
-    boolean: (val) => typeof val === 'boolean',
-    string: (val) => typeof val === 'string',
-    stringOrUint8Array: (val) => typeof val === 'string' || val instanceof Uint8Array,
-    isSafeInteger: (val) => Number.isSafeInteger(val),
-    array: (val) => Array.isArray(val),
-    field: (val, object) => object.Fp.isValid(val),
-    hash: (val) => typeof val === 'function' && Number.isSafeInteger(val.outputLen),
-};
-// type Record<K extends string | number | symbol, T> = { [P in K]: T; }
-function validateObject(object, validators, optValidators = {}) {
-    const checkField = (fieldName, type, isOptional) => {
-        const checkVal = validatorFns[type];
-        if (typeof checkVal !== 'function')
-            throw new Error(`Invalid validator "${type}", expected function`);
-        const val = object[fieldName];
-        if (isOptional && val === undefined)
-            return;
-        if (!checkVal(val, object)) {
-            throw new Error(`Invalid param ${String(fieldName)}=${val} (${typeof val}), expected ${type}`);
-        }
-    };
-    for (const [fieldName, type] of Object.entries(validators))
-        checkField(fieldName, type, false);
-    for (const [fieldName, type] of Object.entries(optValidators))
-        checkField(fieldName, type, true);
-    return object;
-}
-// validate type tests
-// const o: { a: number; b: number; c: number } = { a: 1, b: 5, c: 6 };
-// const z0 = validateObject(o, { a: 'isSafeInteger' }, { c: 'bigint' }); // Ok!
-// // Should fail type-check
-// const z1 = validateObject(o, { a: 'tmp' }, { c: 'zz' });
-// const z2 = validateObject(o, { a: 'isSafeInteger' }, { c: 'zz' });
-// const z3 = validateObject(o, { test: 'boolean', z: 'bug' });
-// const z4 = validateObject(o, { a: 'boolean', z: 'bug' });
-
-var ut = /*#__PURE__*/Object.freeze({
-    __proto__: null,
-    bitGet: bitGet,
-    bitLen: bitLen,
-    bitMask: bitMask,
-    bitSet: bitSet,
-    bytesToHex: bytesToHex,
-    bytesToNumberBE: bytesToNumberBE,
-    bytesToNumberLE: bytesToNumberLE,
-    concatBytes: concatBytes,
-    ensureBytes: ensureBytes,
-    equalBytes: equalBytes,
-    hexToBytes: hexToBytes,
-    hexToNumber: hexToNumber,
-    numberToBytesBE: numberToBytesBE,
-    numberToBytesLE: numberToBytesLE,
-    numberToHexUnpadded: numberToHexUnpadded,
-    numberToVarBytesBE: numberToVarBytesBE,
-    utf8ToBytes: utf8ToBytes,
-    validateObject: validateObject
-});
 
 /**
  *  A constant for the zero address.
@@ -14229,7 +13922,6 @@ const defaultOptions = {
     cacheTimeout: 250,
     pollingInterval: 4000
 };
-
 /**
  *  The JsonRpcApiProvider is an abstract class and **MUST** be
  *  sub-classed.
@@ -14749,7 +14441,6 @@ class JsonRpcApiProvider extends AbstractProvider {
         this.#scheduleDrain();
         return promise;
     }
-
     destroy() {
         // Stop processing requests
         if (this.#drainTimer) {
