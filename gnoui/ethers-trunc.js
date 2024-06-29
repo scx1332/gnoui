@@ -3791,51 +3791,6 @@ function randomBytes$1(length) {
     return result;
 }
 
-/**
- *  An **HMAC** enables verification that a given key was used
- *  to authenticate a payload.
- *
- *  See: [[link-wiki-hmac]]
- *
- *  @_subsection: api/crypto:HMAC  [about-hmac]
- */
-let locked$4 = false;
-const _computeHmac = function (algorithm, key, data) {
-    return createHmac(algorithm, key).update(data).digest();
-};
-let __computeHmac = _computeHmac;
-/**
- *  Return the HMAC for %%data%% using the %%key%% key with the underlying
- *  %%algo%% used for compression.
- *
- *  @example:
- *    key = id("some-secret")
- *
- *    // Compute the HMAC
- *    computeHmac("sha256", key, "0x1337")
- *    //_result:
- *
- *    // To compute the HMAC of UTF-8 data, the data must be
- *    // converted to UTF-8 bytes
- *    computeHmac("sha256", key, toUtf8Bytes("Hello World"))
- *    //_result:
- *
- */
-function computeHmac(algorithm, _key, _data) {
-    const key = getBytes(_key, "key");
-    const data = getBytes(_data, "data");
-    return hexlify(__computeHmac(algorithm, key, data));
-}
-computeHmac._ = _computeHmac;
-computeHmac.lock = function () { locked$4 = true; };
-computeHmac.register = function (func) {
-    if (locked$4) {
-        throw new Error("computeHmac is locked");
-    }
-    __computeHmac = func;
-};
-Object.freeze(computeHmac);
-
 // SHA3 (keccak) is based on a new design: basically, the internal state is bigger than output size.
 // It's called a sponge function.
 // Various per round constants calculations
@@ -4377,239 +4332,13 @@ function BlockMix(input, ii, out, oi, r) {
         XorAndSalsa(out, head, input, (ii += 16), out, tail); // tail[i] = Salsa(blockIn[2*i+1] ^ head[i])
     }
 }
-// Common prologue and epilogue for sync/async functions
-function scryptInit(password, salt, _opts) {
-    // Maxmem - 1GB+1KB by default
-    const opts = checkOpts({
-        dkLen: 32,
-        asyncTick: 10,
-        maxmem: 1024 ** 3 + 1024,
-    }, _opts);
-    const { N, r, p, dkLen, asyncTick, maxmem, onProgress } = opts;
-    number(N);
-    number(r);
-    number(p);
-    number(dkLen);
-    number(asyncTick);
-    number(maxmem);
-    if (onProgress !== undefined && typeof onProgress !== 'function')
-        throw new Error('progressCb should be function');
-    const blockSize = 128 * r;
-    const blockSize32 = blockSize / 4;
-    if (N <= 1 || (N & (N - 1)) !== 0 || N >= 2 ** (blockSize / 8) || N > 2 ** 32) {
-        // NOTE: we limit N to be less than 2**32 because of 32 bit variant of Integrify function
-        // There is no JS engines that allows alocate more than 4GB per single Uint8Array for now, but can change in future.
-        throw new Error('Scrypt: N must be larger than 1, a power of 2, less than 2^(128 * r / 8) and less than 2^32');
-    }
-    if (p < 0 || p > ((2 ** 32 - 1) * 32) / blockSize) {
-        throw new Error('Scrypt: p must be a positive integer less than or equal to ((2^32 - 1) * 32) / (128 * r)');
-    }
-    if (dkLen < 0 || dkLen > (2 ** 32 - 1) * 32) {
-        throw new Error('Scrypt: dkLen should be positive integer less than or equal to (2^32 - 1) * 32');
-    }
-    const memUsed = blockSize * (N + p);
-    if (memUsed > maxmem) {
-        throw new Error(`Scrypt: parameters too large, ${memUsed} (128 * r * (N + p)) > ${maxmem} (maxmem)`);
-    }
-    // [B0...Bp−1] ← PBKDF2HMAC-SHA256(Passphrase, Salt, 1, blockSize*ParallelizationFactor)
-    // Since it has only one iteration there is no reason to use async variant
-    const B = pbkdf2$1(sha256$1, password, salt, { c: 1, dkLen: blockSize * p });
-    const B32 = u32(B);
-    // Re-used between parallel iterations. Array(iterations) of B
-    const V = u32(new Uint8Array(blockSize * N));
-    const tmp = u32(new Uint8Array(blockSize));
-    let blockMixCb = () => { };
-    if (onProgress) {
-        const totalBlockMix = 2 * N * p;
-        // Invoke callback if progress changes from 10.01 to 10.02
-        // Allows to draw smooth progress bar on up to 8K screen
-        const callbackPer = Math.max(Math.floor(totalBlockMix / 10000), 1);
-        let blockMixCnt = 0;
-        blockMixCb = () => {
-            blockMixCnt++;
-            if (onProgress && (!(blockMixCnt % callbackPer) || blockMixCnt === totalBlockMix))
-                onProgress(blockMixCnt / totalBlockMix);
-        };
-    }
-    return { N, r, p, dkLen, blockSize32, V, B32, B, tmp, blockMixCb, asyncTick };
-}
-function scryptOutput(password, dkLen, B, V, tmp) {
-    const res = pbkdf2$1(sha256$1, password, B, { c: 1, dkLen });
-    B.fill(0);
-    V.fill(0);
-    tmp.fill(0);
-    return res;
-}
-/**
- * Scrypt KDF from RFC 7914.
- * @param password - pass
- * @param salt - salt
- * @param opts - parameters
- * - `N` is cpu/mem work factor (power of 2 e.g. 2**18)
- * - `r` is block size (8 is common), fine-tunes sequential memory read size and performance
- * - `p` is parallelization factor (1 is common)
- * - `dkLen` is output key length in bytes e.g. 32.
- * - `asyncTick` - (default: 10) max time in ms for which async function can block execution
- * - `maxmem` - (default: `1024 ** 3 + 1024` aka 1GB+1KB). A limit that the app could use for scrypt
- * - `onProgress` - callback function that would be executed for progress report
- * @returns Derived key
- */
-function scrypt$1(password, salt, opts) {
-    const { N, r, p, dkLen, blockSize32, V, B32, B, tmp, blockMixCb } = scryptInit(password, salt, opts);
-    for (let pi = 0; pi < p; pi++) {
-        const Pi = blockSize32 * pi;
-        for (let i = 0; i < blockSize32; i++)
-            V[i] = B32[Pi + i]; // V[0] = B[i]
-        for (let i = 0, pos = 0; i < N - 1; i++) {
-            BlockMix(V, pos, V, (pos += blockSize32), r); // V[i] = BlockMix(V[i-1]);
-            blockMixCb();
-        }
-        BlockMix(V, (N - 1) * blockSize32, B32, Pi, r); // Process last element
-        blockMixCb();
-        for (let i = 0; i < N; i++) {
-            // First u32 of the last 64-byte block (u32 is LE)
-            const j = B32[Pi + blockSize32 - 16] % N; // j = Integrify(X) % iterations
-            for (let k = 0; k < blockSize32; k++)
-                tmp[k] = B32[Pi + k] ^ V[j * blockSize32 + k]; // tmp = B ^ V[j]
-            BlockMix(tmp, 0, B32, Pi, r); // B = BlockMix(B ^ V[j])
-            blockMixCb();
-        }
-    }
-    return scryptOutput(password, dkLen, B, V, tmp);
-}
-/**
- * Scrypt KDF from RFC 7914.
- */
-async function scryptAsync(password, salt, opts) {
-    const { N, r, p, dkLen, blockSize32, V, B32, B, tmp, blockMixCb, asyncTick } = scryptInit(password, salt, opts);
-    for (let pi = 0; pi < p; pi++) {
-        const Pi = blockSize32 * pi;
-        for (let i = 0; i < blockSize32; i++)
-            V[i] = B32[Pi + i]; // V[0] = B[i]
-        let pos = 0;
-        await asyncLoop(N - 1, asyncTick, () => {
-            BlockMix(V, pos, V, (pos += blockSize32), r); // V[i] = BlockMix(V[i-1]);
-            blockMixCb();
-        });
-        BlockMix(V, (N - 1) * blockSize32, B32, Pi, r); // Process last element
-        blockMixCb();
-        await asyncLoop(N, asyncTick, () => {
-            // First u32 of the last 64-byte block (u32 is LE)
-            const j = B32[Pi + blockSize32 - 16] % N; // j = Integrify(X) % iterations
-            for (let k = 0; k < blockSize32; k++)
-                tmp[k] = B32[Pi + k] ^ V[j * blockSize32 + k]; // tmp = B ^ V[j]
-            BlockMix(tmp, 0, B32, Pi, r); // B = BlockMix(B ^ V[j])
-            blockMixCb();
-        });
-    }
-    return scryptOutput(password, dkLen, B, V, tmp);
-}
-
-let lockedSync = false, lockedAsync = false;
-const _scryptAsync = async function (passwd, salt, N, r, p, dkLen, onProgress) {
-    return await scryptAsync(passwd, salt, { N, r, p, dkLen, onProgress });
-};
-const _scryptSync = function (passwd, salt, N, r, p, dkLen) {
-    return scrypt$1(passwd, salt, { N, r, p, dkLen });
-};
-let __scryptAsync = _scryptAsync;
-let __scryptSync = _scryptSync;
-/**
- *  The [[link-wiki-scrypt]] uses a memory and cpu hard method of
- *  derivation to increase the resource cost to brute-force a password
- *  for a given key.
- *
- *  This means this algorithm is intentionally slow, and can be tuned to
- *  become slower. As computation and memory speed improve over time,
- *  increasing the difficulty maintains the cost of an attacker.
- *
- *  For example, if a target time of 5 seconds is used, a legitimate user
- *  which knows their password requires only 5 seconds to unlock their
- *  account. A 6 character password has 68 billion possibilities, which
- *  would require an attacker to invest over 10,000 years of CPU time. This
- *  is of course a crude example (as password generally aren't random),
- *  but demonstrates to value of imposing large costs to decryption.
- *
- *  For this reason, if building a UI which involved decrypting or
- *  encrypting datsa using scrypt, it is recommended to use a
- *  [[ProgressCallback]] (as event short periods can seem lik an eternity
- *  if the UI freezes). Including the phrase //"decrypting"// in the UI
- *  can also help, assuring the user their waiting is for a good reason.
- *
- *  @_docloc: api/crypto:Passwords
- *
- *  @example:
- *    // The password must be converted to bytes, and it is generally
- *    // best practices to ensure the string has been normalized. Many
- *    // formats explicitly indicate the normalization form to use.
- *    password = "hello"
- *    passwordBytes = toUtf8Bytes(password, "NFKC")
- *
- *    salt = id("some-salt")
- *
- *    // Compute the scrypt
- *    scrypt(passwordBytes, salt, 1024, 8, 1, 16)
- *    //_result:
- */
-async function scrypt(_passwd, _salt, N, r, p, dkLen, progress) {
-    const passwd = getBytes(_passwd, "passwd");
-    const salt = getBytes(_salt, "salt");
-    return hexlify(await __scryptAsync(passwd, salt, N, r, p, dkLen, progress));
-}
-scrypt._ = _scryptAsync;
-scrypt.lock = function () { lockedAsync = true; };
-scrypt.register = function (func) {
-    if (lockedAsync) {
-        throw new Error("scrypt is locked");
-    }
-    __scryptAsync = func;
-};
-Object.freeze(scrypt);
-/**
- *  Provides a synchronous variant of [[scrypt]].
- *
- *  This will completely lock up and freeze the UI in a browser and will
- *  prevent any event loop from progressing. For this reason, it is
- *  preferred to use the [async variant](scrypt).
- *
- *  @_docloc: api/crypto:Passwords
- *
- *  @example:
- *    // The password must be converted to bytes, and it is generally
- *    // best practices to ensure the string has been normalized. Many
- *    // formats explicitly indicate the normalization form to use.
- *    password = "hello"
- *    passwordBytes = toUtf8Bytes(password, "NFKC")
- *
- *    salt = id("some-salt")
- *
- *    // Compute the scrypt
- *    scryptSync(passwordBytes, salt, 1024, 8, 1, 16)
- *    //_result:
- */
-function scryptSync(_passwd, _salt, N, r, p, dkLen) {
-    const passwd = getBytes(_passwd, "passwd");
-    const salt = getBytes(_salt, "salt");
-    return hexlify(__scryptSync(passwd, salt, N, r, p, dkLen));
-}
-scryptSync._ = _scryptSync;
-scryptSync.lock = function () { lockedSync = true; };
-scryptSync.register = function (func) {
-    if (lockedSync) {
-        throw new Error("scryptSync is locked");
-    }
-    __scryptSync = func;
-};
-Object.freeze(scryptSync);
 
 const _sha256 = function (data) {
     return createHash("sha256").update(data).digest();
 };
-const _sha512 = function (data) {
-    return createHash("sha512").update(data).digest();
-};
+
 let __sha256 = _sha256;
-let __sha512 = _sha512;
+
 let locked256 = false, locked512 = false;
 /**
  *  Compute the cryptographic SHA2-256 hash of %%data%%.
@@ -4641,35 +4370,7 @@ sha256.register = function (func) {
     __sha256 = func;
 };
 Object.freeze(sha256);
-/**
- *  Compute the cryptographic SHA2-512 hash of %%data%%.
- *
- *  @_docloc: api/crypto:Hash Functions
- *  @returns DataHexstring
- *
- *  @example:
- *    sha512("0x")
- *    //_result:
- *
- *    sha512("0x1337")
- *    //_result:
- *
- *    sha512(new Uint8Array([ 0x13, 0x37 ]))
- *    //_result:
- */
-function sha512(_data) {
-    const data = getBytes(_data, "data");
-    return hexlify(__sha512(data));
-}
-sha512._ = _sha512;
-sha512.lock = function () { locked512 = true; };
-sha512.register = function (func) {
-    if (locked512) {
-        throw new Error("sha512 is locked");
-    }
-    __sha512 = func;
-};
-Object.freeze(sha256);
+
 
 /*! noble-curves - MIT License (c) 2022 Paul Miller (paulmillr.com) */
 // 100 lines of code in the file are duplicated from noble-hashes (utils).
@@ -4839,64 +4540,7 @@ const bitMask = (n) => (_2n$2 << BigInt(n - 1)) - _1n$4;
 // DRBG
 const u8n = (data) => new Uint8Array(data); // creates Uint8Array
 const u8fr = (arr) => Uint8Array.from(arr); // another shortcut
-/**
- * Minimal HMAC-DRBG from NIST 800-90 for RFC6979 sigs.
- * @returns function that will call DRBG until 2nd arg returns something meaningful
- * @example
- *   const drbg = createHmacDRBG<Key>(32, 32, hmac);
- *   drbg(seed, bytesToKey); // bytesToKey must return Key or undefined
- */
-function createHmacDrbg(hashLen, qByteLen, hmacFn) {
-    if (typeof hashLen !== 'number' || hashLen < 2)
-        throw new Error('hashLen must be a number');
-    if (typeof qByteLen !== 'number' || qByteLen < 2)
-        throw new Error('qByteLen must be a number');
-    if (typeof hmacFn !== 'function')
-        throw new Error('hmacFn must be a function');
-    // Step B, Step C: set hashLen to 8*ceil(hlen/8)
-    let v = u8n(hashLen); // Minimal non-full-spec HMAC-DRBG from NIST 800-90 for RFC6979 sigs.
-    let k = u8n(hashLen); // Steps B and C of RFC6979 3.2: set hashLen, in our case always same
-    let i = 0; // Iterations counter, will throw when over 1000
-    const reset = () => {
-        v.fill(1);
-        k.fill(0);
-        i = 0;
-    };
-    const h = (...b) => hmacFn(k, v, ...b); // hmac(k)(v, ...values)
-    const reseed = (seed = u8n()) => {
-        // HMAC-DRBG reseed() function. Steps D-G
-        k = h(u8fr([0x00]), seed); // k = hmac(k || v || 0x00 || seed)
-        v = h(); // v = hmac(k || v)
-        if (seed.length === 0)
-            return;
-        k = h(u8fr([0x01]), seed); // k = hmac(k || v || 0x01 || seed)
-        v = h(); // v = hmac(k || v)
-    };
-    const gen = () => {
-        // HMAC-DRBG generate() function
-        if (i++ >= 1000)
-            throw new Error('drbg: tried 1000 values');
-        let len = 0;
-        const out = [];
-        while (len < qByteLen) {
-            v = h();
-            const sl = v.slice();
-            out.push(sl);
-            len += v.length;
-        }
-        return concatBytes(...out);
-    };
-    const genUntil = (seed, pred) => {
-        reset();
-        reseed(seed); // Steps D-G
-        let res = undefined; // Step H: grind until k is in [1..n-1]
-        while (!(res = pred(gen())))
-            reseed();
-        reset();
-        return res;
-    };
-    return genUntil;
-}
+
 // Validating curves and fields
 const validatorFns = {
     bigint: (val) => typeof val === 'bigint',
@@ -4947,7 +4591,6 @@ var ut = /*#__PURE__*/Object.freeze({
     bytesToNumberBE: bytesToNumberBE,
     bytesToNumberLE: bytesToNumberLE,
     concatBytes: concatBytes,
-    createHmacDrbg: createHmacDrbg,
     ensureBytes: ensureBytes,
     equalBytes: equalBytes,
     hexToBytes: hexToBytes,
@@ -6860,16 +6503,7 @@ class Signature {
  *  primitives using the ``.register`` feature for hooks.
  */
 function lock() {
-    computeHmac.lock();
     keccak256.lock();
-    pbkdf2.lock();
-    randomBytes.lock();
-    ripemd160.lock();
-    scrypt.lock();
-    scryptSync.lock();
-    sha256.lock();
-    sha512.lock();
-    randomBytes.lock();
 }
 
 const BN_0$6 = BigInt(0);
@@ -22246,32 +21880,7 @@ function getDecryptKdfParams(data) {
     }
     assertArgument(false, "unsupported key-derivation function", "kdf", kdf);
 }
-/**
- *  Returns the account details for the JSON Keystore Wallet %%json%%
- *  using %%password%%.
- *
- *  It is preferred to use the [async version](decryptKeystoreJson)
- *  instead, which allows a [[ProgressCallback]] to keep the user informed
- *  as to the decryption status.
- *
- *  This method will block the event loop (freezing all UI) until decryption
- *  is complete, which can take quite some time, depending on the wallet
- *  paramters and platform.
- */
-function decryptKeystoreJsonSync(json, _password) {
-    const data = JSON.parse(json);
-    const password = getPassword(_password);
-    const params = getDecryptKdfParams(data);
-    if (params.name === "pbkdf2") {
-        const { salt, count, dkLen, algorithm } = params;
-        const key = pbkdf2(password, salt, count, dkLen, algorithm);
-        return getAccount(data, key);
-    }
-    assert(params.name === "scrypt", "cannot be reached", "UNKNOWN_ERROR", { params });
-    const { salt, N, r, p, dkLen } = params;
-    const key = scryptSync(password, salt, N, r, p, dkLen);
-    return getAccount(data, key);
-}
+
 function stall$1(duration) {
     return new Promise((resolve) => { setTimeout(() => { resolve(); }, duration); });
 }
@@ -22459,7 +22068,6 @@ var ethers = /*#__PURE__*/Object.freeze({
     assertNormalize: assertNormalize,
     assertPrivate: assertPrivate,
     checkResultErrors: checkResultErrors,
-    computeHmac: computeHmac,
     concat: concat,
     copyRequest: copyRequest,
     dataLength: dataLength,
@@ -22468,7 +22076,6 @@ var ethers = /*#__PURE__*/Object.freeze({
     decodeBase64: decodeBase64,
     decodeBytes32String: decodeBytes32String,
     decodeRlp: decodeRlp,
-    decryptKeystoreJsonSync: decryptKeystoreJsonSync,
     defineProperties: defineProperties,
     dnsEncode: dnsEncode,
     encodeBase58: encodeBase58,
@@ -22512,10 +22119,7 @@ var ethers = /*#__PURE__*/Object.freeze({
     resolveAddress: resolveAddress,
     resolveProperties: resolveProperties,
     ripemd160: ripemd160,
-    scrypt: scrypt,
-    scryptSync: scryptSync,
     sha256: sha256,
-    sha512: sha512,
     showThrottleMessage: showThrottleMessage,
     solidityPacked: solidityPacked,
     solidityPackedKeccak256: solidityPackedKeccak256,
