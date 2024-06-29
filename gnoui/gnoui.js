@@ -969,7 +969,6 @@ async function sendGasTransfer() {
             document.getElementById('eth-reload-page-div').setAttribute("style", "padding-top: 0.5em; display: block;");
         }
     } catch (e) {
-        console.error(e);
         document.getElementById('send-eth-error-box').innerText = e.toString();
     }
     document.getElementById('send-gas-button').removeAttribute("disabled");
