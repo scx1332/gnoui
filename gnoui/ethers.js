@@ -12002,16 +12002,12 @@ function injectCommonNetworks() {
     registerEth("linea-sepolia", 59141, {});
     registerEth("matic", 137, {
         ensNetwork: 1,
-        plugins: [
-            getGasStationPlugin("https:/\/gasstation.polygon.technology/v2")
-        ]
+        plugins: []
     });
     registerEth("matic-amoy", 80002, {});
     registerEth("matic-mumbai", 80001, {
         altNames: ["maticMumbai", "maticmum"],
-        plugins: [
-            getGasStationPlugin("https:/\/gasstation-testnet.polygon.technology/v2")
-        ]
+        plugins: []
     });
     registerEth("optimism", 10, {
         ensNetwork: 1,
