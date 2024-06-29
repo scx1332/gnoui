@@ -2586,35 +2586,6 @@ function parseEther(ether) {
 }
 
 /**
- *  Explain UUID and link to RFC here.
- *
- *  @_subsection: api/utils:UUID  [about-uuid]
- */
-/**
- *  Returns the version 4 [[link-uuid]] for the %%randomBytes%%.
- *
- *  @see: https://www.ietf.org/rfc/rfc4122.txt (Section 4.4)
- */
-function uuidV4(randomBytes) {
-    const bytes = getBytes(randomBytes, "randomBytes");
-    // Section: 4.1.3:
-    // - time_hi_and_version[12:16] = 0b0100
-    bytes[6] = (bytes[6] & 0x0f) | 0x40;
-    // Section 4.4
-    // - clock_seq_hi_and_reserved[6] = 0b0
-    // - clock_seq_hi_and_reserved[7] = 0b1
-    bytes[8] = (bytes[8] & 0x3f) | 0x80;
-    const value = hexlify(bytes);
-    return [
-        value.substring(2, 10),
-        value.substring(10, 14),
-        value.substring(14, 18),
-        value.substring(18, 22),
-        value.substring(22, 34),
-    ].join("-");
-}
-
-/**
  * @_ignore:
  */
 const WordSize = 32;
@@ -3168,25 +3139,23 @@ function wrapConstructor(hashCons) {
     hashC.create = () => hashCons();
     return hashC;
 }
-/**
- * Secure PRNG. Uses `crypto.getRandomValues`, which defers to OS.
- */
-function randomBytes$2(bytesLength = 32) {
-    if (crypto$1 && typeof crypto$1.getRandomValues === 'function') {
-        return crypto$1.getRandomValues(new Uint8Array(bytesLength));
-    }
-    throw new Error('crypto.getRandomValues must be defined');
+
+const U32_MASK64 = /* @__PURE__ */ BigInt(2 ** 32 - 1);
+const _32n = /* @__PURE__ */ BigInt(32);
+// We are not using BigUint64Array, because they are extremely slow as per 2022
+function fromBig(n, le = false) {
+    if (le)
+        return { h: Number(n & U32_MASK64), l: Number((n >> _32n) & U32_MASK64) };
+    return { h: Number((n >> _32n) & U32_MASK64) | 0, l: Number(n & U32_MASK64) | 0 };
 }
-
-
-function randomBytes$1(length) {
-    assert(crypto != null, "platform does not support secure random numbers", "UNSUPPORTED_OPERATION", {
-        operation: "randomBytes"
-    });
-    assertArgument(Number.isInteger(length) && length > 0 && length <= 1024, "invalid length", "length", length);
-    const result = new Uint8Array(length);
-    crypto.getRandomValues(result);
-    return result;
+function split$1(lst, le = false) {
+    let Ah = new Uint32Array(lst.length);
+    let Al = new Uint32Array(lst.length);
+    for (let i = 0; i < lst.length; i++) {
+        const { h, l } = fromBig(lst[i], le);
+        [Ah[i], Al[i]] = [h, l];
+    }
+    return [Ah, Al];
 }
 
 // SHA3 (keccak) is based on a new design: basically, the internal state is bigger than output size.
@@ -3425,43 +3394,6 @@ keccak256.register = function (func) {
     __keccak256 = func;
 };
 Object.freeze(keccak256);
-
-/**
- *  A **Cryptographically Secure Random Value** is one that has been
- *  generated with additional care take to prevent side-channels
- *  from allowing others to detect it and prevent others from through
- *  coincidence generate the same values.
- *
- *  @_subsection: api/crypto:Random Values  [about-crypto-random]
- */
-let locked = false;
-const _randomBytes = function (length) {
-    return new Uint8Array(randomBytes$1(length));
-};
-let __randomBytes = _randomBytes;
-/**
- *  Return %%length%% bytes of cryptographically secure random data.
- *
- *  @example:
- *    randomBytes(8)
- *    //_result:
- */
-function randomBytes(length) {
-    return __randomBytes(length);
-}
-randomBytes._ = _randomBytes;
-randomBytes.lock = function () { locked = true; };
-randomBytes.register = function (func) {
-    if (locked) {
-        throw new Error("randomBytes is locked");
-    }
-    __randomBytes = func;
-};
-Object.freeze(randomBytes);
-
-// RFC 7914 Scrypt KDF
-// Left rotate for uint32
-const rotl = (a, b) => (a << b) | (a >>> (32 - b));
 
 /**
  *  A constant for the zero address.
@@ -15921,7 +15853,6 @@ var ethers = /*#__PURE__*/Object.freeze({
     mask: mask,
     parseEther: parseEther,
     parseUnits: parseUnits$1,
-    randomBytes: randomBytes,
     resolveAddress: resolveAddress,
     resolveProperties: resolveProperties,
     showThrottleMessage: showThrottleMessage,
@@ -15937,7 +15868,6 @@ var ethers = /*#__PURE__*/Object.freeze({
     toUtf8Bytes: toUtf8Bytes,
     toUtf8CodePoints: toUtf8CodePoints,
     toUtf8String: toUtf8String,
-    uuidV4: uuidV4,
     verifyMessage: verifyMessage,
     version: version,
     zeroPadBytes: zeroPadBytes,
