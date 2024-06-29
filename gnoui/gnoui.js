@@ -402,6 +402,8 @@ async function getTransactionDetails(contract, transactionId) {
     if (!bytes instanceof Uint8Array) {
         throw "Data must be Uint8Array";
     }
+    let isContractCall = (bytes.length > 0);
+
     let newDiv = document.createElement('div');
     newDiv.className = "transaction-details";
 
@@ -411,15 +413,22 @@ async function getTransactionDetails(contract, transactionId) {
         parentDiv.className = "address-box-entry";
 
         if (!executed) {
+            let transactionInfo = `Transaction with id: ${transactionId}\nawaits confirmation`;
             parentDiv.appendChild(createDivWithClassAndContent(
                 "details-label transaction-details-header-label",
-                `<div style="display:flex;flex-direction: row;align-items: center;"><div class="icon-not-confirmed"></div><div class="transaction-explanation">Transaction with id: ${transactionId}<br/>awaits confirmation</div></div>`,
+                `<div style="display:flex;flex-direction: row;align-items: center;"><div class="icon-not-confirmed"></div><div class="transaction-explanation">${transactionInfo}</div></div>`,
                 true
             ));
         } else {
+            let transactionInfo;
+            if (isContractCall) {
+                transactionInfo = `Transaction with id: ${transactionId}\nsuccessfully executed`;
+            } else {
+                transactionInfo = `ETH transfer with id: ${transactionId}\nsuccessfully executed`;
+            }
             parentDiv.appendChild(createDivWithClassAndContent(
                 "details-label transaction-details-header-label",
-                `<div style="display:flex;flex-direction: row;align-items: center;"><div class="icon-confirmed"></div><div class="transaction-explanation">Transaction with id: ${transactionId}<br/>successfully executed</div></div>`,
+                `<div style="display:flex;flex-direction: row;align-items: center;"><div class="icon-confirmed"></div><div class="transaction-explanation">${transactionInfo}</div></div>`,
                 true
             ));
         }
@@ -458,8 +467,6 @@ async function getTransactionDetails(contract, transactionId) {
             renderOwnersEntry(ownersNotConfirmed, false)
         );
     }
-
-    let isContractCall = (bytes.length > 0);
 
     let abi = null;
     let iface = null;
@@ -508,8 +515,11 @@ async function getTransactionDetails(contract, transactionId) {
     }
     {
         let parentDiv = document.createElement('div');
-        parentDiv.className = "address-box-entry";
-
+        if (!isContractCall) {
+            parentDiv.className = "address-box-entry-last";
+        } else {
+            parentDiv.className = "address-box-entry";
+        }
         if (executed) {
             parentDiv.appendChild(createDivWithClassAndContent(
                 "details-label address-box-label",
@@ -526,13 +536,7 @@ async function getTransactionDetails(contract, transactionId) {
         newDiv.appendChild(parentDiv);
     }
     if (!isContractCall) {
-        newDiv.appendChild(renderDetailsEntry(
-            "function-signature-label",
-            "Function signature:",
-            "function-signature-box",
-            `No function call (pure ETH transfer)`
-        ));
-
+        /* show nothing */
     } else if (func && decoded != null) {
         let fullFuncSig = func.name + "(" + func.inputs.map(input => input.type).join(",") + ")";
         if (fullFuncSig == "transfer(address,uint256)") {
@@ -583,7 +587,7 @@ async function getTransactionDetails(contract, transactionId) {
         }
     }
 
-    {
+    if (isContractCall) {
         let parentDiv = document.createElement('div');
         parentDiv.className = "address-box-entry-last";
 
