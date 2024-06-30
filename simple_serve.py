@@ -1,3 +1,4 @@
+import socket
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 # Favicon content (a 1x1 transparent GIF)
@@ -61,14 +62,27 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         self.send_response(404)
 
 
+def is_port_in_use(port, host='127.0.0.1'):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        try:
+            s.bind((host, port))
+            return False
+        except socket.error:
+            return True
+
+
 # Define the port on which you want to serve the content
 PORT = 17173
+if is_port_in_use(PORT):
+    print(f"Port {PORT} is already in use.")
+    exit(1)
 
 
 def run(server_class=HTTPServer, handler_class=SimpleHTTPRequestHandler):
-    server_address = ('', PORT)
+    server_address = ('localhost', PORT)
     httpd = server_class(server_address, handler_class)
     print(f"Serving on port {PORT}")
+    print(f"Open (Ctrl + click) http://localhost:{PORT}/ in your browser")
     httpd.serve_forever()
 
 
