@@ -62,7 +62,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
 
 # Define the port on which you want to serve the content
-PORT = 8000
+PORT = 17173
 
 
 def run(server_class=HTTPServer, handler_class=SimpleHTTPRequestHandler):
