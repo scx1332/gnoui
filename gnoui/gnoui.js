@@ -617,12 +617,28 @@ async function getTransactionDetails(contract, transactionId) {
 
     if (!executed && globals.owners.includes(connected) && ownersNotConfirmed.includes(connected)) {
         let parentDiv = document.createElement('div');
-        parentDiv.className = "address-box-entry";
+        parentDiv.className = "address-box-entry-last";
 
         parentDiv.appendChild(createDivWithClassAndContent(
-            "details-label address-box-label",
+            "",
             `<button id="confirm-transaction-no-${transactionId}" onclick="confirmTransaction(${transactionId})">Confirm transaction ${transactionId}</button>`, true));
         newDiv.appendChild(parentDiv);
+
+        newDiv.appendChild(createDivWithClassAndContent(
+            "address-box-entry-tx-explanation",
+            `<div id='metamask-result-confirm-${transactionId}' class="tx-explanation-info-box"></div>`,
+            true
+        ));
+        newDiv.appendChild(createDivWithClassAndContent(
+            "address-box-entry-tx-explanation",
+            `<div id='metamask-error-confirm-${transactionId}' class="tx-error-box"></div>`,
+            true
+        ));
+        newDiv.appendChild(createDivWithClassAndContent(
+            "address-box-entry-tx-explanation",
+            `<div id='metamask-refresh-page-confirm-${transactionId}' style="display: none" class="div-reload-after-confirm"><button onclick="window.location.reload()">Reload application</button></div>`,
+            true
+        ));
     }
     if (!executed) {
         document.getElementById("div-no-transaction-pending-list").setAttribute("style", "display: none;");
@@ -638,18 +654,33 @@ async function confirmTransaction(transactionId) {
     let call = iface.encodeFunctionData("confirmTransaction", [transactionId]);
     let gasLimitHex = await estimateMultiSigMethod(new BrowserProvider(provider), call);
 
-    window.ethereum.request({
-        "method": "eth_sendTransaction",
-        "params": [
-            {
-                "to": globals.multiSigAddress,
-                "from": connected,
-                "gas": gasLimitHex,
-                "value": "0x0",
-                "data": call,
-            }
-        ]
-    });
+
+    document.getElementById(`confirm-transaction-no-${transactionId}`).setAttribute("disabled", "disabled");
+
+    try {
+        let tx = await window.ethereum.request({
+            "method": "eth_sendTransaction",
+            "params": [
+                {
+                    "to": globals.multiSigAddress,
+                    "from": connected,
+                    "gas": gasLimitHex,
+                    "value": "0x0",
+                    "data": call,
+                }
+            ]
+        });
+        document.getElementById(`metamask-error-confirm-${transactionId}`).innerText = "";
+        document.getElementById(`metamask-result-confirm-${transactionId}`).innerText = `Transaction sent via MetaMask to blockchain. Transaction is being processed on blockchain. Normally it can take from couple of seconds up to couple of minutes.`;
+        let receipt = await (new BrowserProvider(provider)).waitForTransaction(tx);
+        document.getElementById(`metamask-result-confirm-${transactionId}`).innerText = `Transaction found on blockchain. Refresh page to see it on the list.`;
+
+        document.getElementById(`metamask-refresh-page-confirm-${transactionId}`).setAttribute("style", "padding-top: 0.5em; display: block;");
+    } catch (e) {
+        console.error(e);
+        document.getElementById(`metamask-error-confirm-${transactionId}`).innerText = `Error sending transaction: ${e}`;
+        document.getElementById(`confirm-transaction-no-${transactionId}`).removeAttribute("disabled");
+    }
 }
 window.confirmTransaction = confirmTransaction;
 

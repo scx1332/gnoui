@@ -143,16 +143,13 @@ textarea::placeholder {
 
 .transaction-details {
     border-radius: 1em;
-    padding: 0.5em;
+    padding: 1em;
     margin-bottom: 2.0em;
     margin-top: 2em;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     background-color: rgba(255, 255, 255, 0.8);
 }
 
-.transaction-details div {
-    padding: 0.2em;
-}
 .function-signature {
     font-family: monospace;
 }
@@ -211,6 +208,12 @@ textarea::placeholder {
 }
 
 .address-box-entry-last {
+    display: flex;
+    justify-content: left;
+    align-items: center;
+    padding: 0.5em;
+}
+.div-reload-after-confirm {
     display: flex;
     justify-content: left;
     align-items: center;
@@ -427,9 +430,22 @@ body {
     fill: #007BFF;
 }
 
+.tx-error-box {
+    white-space: pre-wrap;
+    font-family: monospace;
+    word-wrap: anywhere;
+    overflow-wrap: anywhere;
+    color: red;
+    padding-left: 1em;
+}
+
 #send-eth-error-box {
     white-space: pre-wrap;
     font-family: monospace;
     word-wrap: anywhere;
     overflow-wrap: anywhere;
+}
+
+.tx-explanation-info-box {
+    padding-left: 0.7em;
 }
