@@ -387,36 +387,27 @@ body {
     white-space: pre-wrap;
 }
 .icon-not-confirmed {
-    background-image: url("icons/not-confirmed.svg");
-    background-size: auto 100%;
-    background-repeat: no-repeat;
-    background-position: left top;
-    height: 2.5em;
-    width: 3.0em;
 }
-.icon-confirmed {
-    background-image: url("icons/confirmed.svg");
-    background-size: auto 100%;
-    background-repeat: no-repeat;
-    background-position: left top;
-    height: 2.5em;
-    width: 3.0em;
-}
-.new-eth-icon {
-    background-image: url("icons/new-eth.svg");
-    background-size: auto 100%;
-    background-repeat: no-repeat;
-    background-position: left top;
+.icon-not-confirmed svg {
     height: 3.0em;
-    width: 9.0em;
+    width: auto;
 }
-.icon-multisig {
-    background-image: url("icons/safe.svg");
-    background-size: auto 100%;
-    background-repeat: no-repeat;
-    background-position: left top;
-    height: 2.5em;
-    width: 2.5em;
+.icon-confirmed svg {
+    height: 3.0em;
+    width: auto;
+}
+#div-new-eth-icon svg {
+    height: 3.0em;
+    width: auto;
+}
+
+#icon-multisig svg {
+    height: 2.7em;
+    width: auto;
+}
+
+#icon-multisig {
+    padding-top: 0.15em;
 }
 
 #connected-addresses {

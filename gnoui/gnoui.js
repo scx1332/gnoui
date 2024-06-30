@@ -1,4 +1,4 @@
-import {parseEther, getAddress, formatEther, hexlify, Interface, Contract, BrowserProvider, ContractFactory, formatUnits, parseUnits, isAddress, isHexString, AbiCoder} from "./ethers.js";
+//import {parseEther, getAddress, formatEther, hexlify, Interface, Contract, BrowserProvider, ContractFactory, formatUnits, parseUnits, isAddress, isHexString, AbiCoder} from "./ethers.js";
 
 
 let verifiedTokens = {
@@ -35,8 +35,6 @@ let dappMetadata = {
     url: "https://gnosis.dev.golem.network"
 };
 
-const sdk = new MetaMaskSDK.MetaMaskSDK(dappMetadata);
-
 let provider;
 let connected;
 
@@ -51,8 +49,30 @@ let globals = {
 window.addEventListener('load', async () => {
     globals.isAdmin = localStorage.getItem("admin-view") === "true";
     globals.isUnsecure = localStorage.getItem("unsecure-mode") === "true";
+
+    document.getElementById("icon-multisig").innerHTML = safeIcon;
+    document.getElementById("div-new-eth-icon").innerHTML = newEthIcon;
+
     update_nav();
-    let res = await sdk.connect();
+    let connectedAccounts = null;
+    if (typeof window.ethereum !== 'undefined') {
+        try {
+            // Request account access
+            await window.ethereum.request({ method: 'eth_requestAccounts' });
+
+            // Get the connected accounts
+            const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+
+            connectedAccounts = accounts;
+        } catch (error) {
+            console.error(error);
+            document.getElementById("metamask-not-connected-div").setAttribute("style", "display: block;");
+            return;
+        }
+    } else {
+        document.getElementById("metamask-not-connected-div").setAttribute("style", "display: block;");
+        return;
+    }
 
     if (globals.isUnsecure) {
         document.getElementById("button-unsecure-view").setAttribute("style", "display: none;");
@@ -72,7 +92,7 @@ window.addEventListener('load', async () => {
         document.getElementById("nav-new-trans-btn").setAttribute("style", "display: none;");
         document.getElementById("nav-new-token-trans-btn").setAttribute("style", "display: none;");
     }
-    updateProvider(res);
+    updateProvider(connectedAccounts);
     //document.getElementById("connect-button").setAttribute("disabled", "true");
 });
 function showNewContractOptions() {
@@ -99,17 +119,8 @@ function switchMultiSig() {
 }
 window.switchMultiSig = switchMultiSig;
 
-function connect() {
-    //document.getElementById("connect-button").setAttribute("disabled", "true");
-    sdk.connect()
-        .then((res) => {
-             updateProvider(res);
-        })
-        .catch((e) => {
-            console.log('request accounts ERR', e);
-            document.getElementById('error-box').innerText = "Error connecting to MetaMask";
-            //document.getElementById("connect-button").removeAttribute("disabled");
-        });
+async function connect() {
+
 }
 window.connect = connect;
 
@@ -423,7 +434,7 @@ async function getTransactionDetails(contract, transactionId) {
             }
             parentDiv.appendChild(createDivWithClassAndContent(
                 "details-label transaction-details-header-label",
-                `<div style="display:flex;flex-direction: row;align-items: center;"><div class="icon-not-confirmed"></div><div class="transaction-explanation">${transactionInfo}</div></div>`,
+                `<div style="display:flex;flex-direction: row;align-items: center;"><div class="icon-not-confirmed">${notConfirmedIcon}</div><div class="transaction-explanation">${transactionInfo}</div></div>`,
                 true
             ));
         } else {
@@ -435,7 +446,7 @@ async function getTransactionDetails(contract, transactionId) {
             }
             parentDiv.appendChild(createDivWithClassAndContent(
                 "details-label transaction-details-header-label",
-                `<div style="display:flex;flex-direction: row;align-items: center;"><div class="icon-confirmed"></div><div class="transaction-explanation">${transactionInfo}</div></div>`,
+                `<div style="display:flex;flex-direction: row;align-items: center;"><div class="icon-confirmed">${confirmedIcon}</div><div class="transaction-explanation">${transactionInfo}</div></div>`,
                 true
             ));
         }
@@ -1013,7 +1024,7 @@ function updateProvider(res) {
     } else {
         return;
     }
-    provider = sdk.getProvider();
+    provider = window.ethereum;
 
     // normalize address
     connected = getAddress(res[selectedIndex]);
