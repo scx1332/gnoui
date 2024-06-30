@@ -30,6 +30,7 @@ favicon_content = """<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 </svg>
 """
 
+
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = self.path.split("?")[0]
@@ -4553,7 +4554,6 @@ a6f27f002ce9f48acd3dd7f3d9c3ff0bd567042874230a00
 """
 
 compressed_data = bytes.fromhex(compressed_data_hex)
-
 
 if __name__ == '__main__':
     run()
